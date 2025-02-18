@@ -93,3 +93,34 @@ print(vif_data_2.sort_values(by="VIF", ascending=False))
 # 1  total_answers  1.032385
 # 2    total_score  1.005847
 # %%
+import xgboost as xgb
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import f1_score
+
+# Select final features based on VIF results
+final_features = ["silver_badges", "total_answers", "total_score"]
+
+# Define X (features) and y (target)
+X = df_refined[final_features]
+y = df_refined["influential"]
+
+# Split into train and test sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+
+# Initialize XGBoost model with class weighting (to handle imbalance)
+scale_pos_weight = 9.0  # Approximate class imbalance ratio (90:10)
+xgb_model = xgb.XGBClassifier(use_label_encoder=False, eval_metric="logloss", scale_pos_weight=scale_pos_weight)
+
+# Train the model
+xgb_model.fit(X_train, y_train)
+
+# Make predictions
+y_pred = xgb_model.predict(X_test)
+
+# Compute F1-score
+f1 = f1_score(y_test, y_pred, average="binary")
+
+# Print results
+print(f"F1-Score: {f1:.4f}")
+
+# F1-Score: 0.5607
