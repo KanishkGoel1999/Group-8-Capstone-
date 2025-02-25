@@ -3,6 +3,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import recall_score, precision_score, f1_score, accuracy_score, confusion_matrix
 
+# function for checking missing values #TODO
 def split_data(df, target_column, test_size=0.2, random_state=42):
     """
     Splits the dataset into training and testing sets.
@@ -45,9 +46,9 @@ def compute_metrics(y_true, y_pred):
         dict: Dictionary containing all computed metrics.
     """
     return {
-        "recall": recall_score(y_true, y_pred, average='weighted'),
-        "precision": precision_score(y_true, y_pred, average='weighted'),
-        "f1_score": f1_score(y_true, y_pred, average='weighted'),
+        "recall": recall_score(y_true, y_pred),
+        "precision": precision_score(y_true, y_pred),
+        "f1_score": f1_score(y_true, y_pred),
         "accuracy": accuracy_score(y_true, y_pred)
     }
 
