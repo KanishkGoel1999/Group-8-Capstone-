@@ -1,14 +1,20 @@
+# %%
 import torch
 import torch.nn.functional as F
 from torch_geometric.loader import NeighborLoader
 from torch_geometric.nn import HeteroConv, SAGEConv
-from sklearn.metrics import f1_score
+from sklearn.metrics import f1_score, precision_score, recall_score
+from torch_geometric.transforms import RandomNodeSplit
 #pip install pyg-lib
 #pip install torch-sparse
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 data = torch.load("hetero_graph.pt")
+
+# Apply RandomNodeSplit transformation
+transform = RandomNodeSplit(split="train_rest", num_val=0.1, num_test=0.1)
+data = transform(data)
 
 print(data)  # Quick summary of the graph
 # Move to GPU if available
@@ -69,7 +75,7 @@ test_indices = indices[train_size:]
 train_loader = NeighborLoader(
     data,
     num_neighbors=[10, 10],  # Adjust neighbor sampling per layer as needed
-    input_nodes=('user', train_indices),
+    input_nodes=('user', data['user'].train_mask),
     batch_size=64,
     shuffle=True,
 )
@@ -77,7 +83,7 @@ train_loader = NeighborLoader(
 test_loader = NeighborLoader(
     data,
     num_neighbors=[10, 10],
-    input_nodes=('user', test_indices),
+    input_nodes=('user', data['user'].test_mask),
     batch_size=64,
     shuffle=False,
 )
@@ -204,7 +210,9 @@ def test():
     all_preds = torch.cat(all_preds, dim=0).numpy()
     all_labels = torch.cat(all_labels, dim=0).numpy()
     f1 = f1_score(all_labels, all_preds, average='macro')
-    return accuracy, f1
+    precision = precision_score(all_labels, all_preds, average='macro')
+    recall = recall_score(all_labels, all_preds, average='macro')
+    return accuracy, f1, precision, recall
 
 # --- Training Loop ---
 num_epochs = 50
@@ -214,6 +222,10 @@ for epoch in range(1, num_epochs + 1):
         print(f"Epoch {epoch:03d} - Loss: {loss:.4f}")
 
 # Evaluate the model on the test data.
-test_accuracy, test_f1 = test()
+test_accuracy, test_f1, test_precision, test_recall = test()
 print(f"Test Accuracy: {test_accuracy:.4f}")
 print(f"Test F1 Score: {test_f1:.4f}")
+print(f"Test Precision: {test_precision:.4f}")
+print(f"Test Recall: {test_recall:.4f}")
+
+# %%
