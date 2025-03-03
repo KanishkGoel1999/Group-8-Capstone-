@@ -1,17 +1,24 @@
+# gnn_script.py
 import torch
 import torch.nn.functional as F
 from torch_geometric.loader import NeighborLoader
-from torch_geometric.nn import HeteroConv, SAGEConv
-from sklearn.metrics import f1_score
-#pip install pyg-lib
-#pip install torch-sparse
+from torch_geometric.transforms import RandomNodeSplit
+
+import sys
+import os
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from components.metric import Metrics
+from components.model import Models
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 data = torch.load("hetero_graph.pt")
 
-print(data)  # Quick summary of the graph
-# Move to GPU if available
+# Apply RandomNodeSplit transformation
+transform = RandomNodeSplit(split="train_rest", num_val=0.1, num_test=0.1)
+data = transform(data)
+
 data = data.to(device)
 def add_reverse_and_self_loop_edges(data):
     # Reverse for user -> question (asks)
@@ -64,12 +71,22 @@ train_size = int(0.8 * num_users)
 train_indices = indices[:train_size]
 test_indices = indices[train_size:]
 
-# --- Create DataLoaders Using NeighborLoader ---
-# This loader samples a fixed number of neighbors per layer for the specified input nodes.
+# Define input channels for GNN model
+in_channels_dict = {
+    'user': data['user'].x.size(-1),
+    'question': data['question'].x.size(-1),
+    'answer': data['answer'].x.size(-1)
+}
+
+# Initialize GNN model
+model = Models.get_gnn_model(in_channels_dict, hidden_channels=32, out_channels=2).to(device)
+optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=1e-5)
+
+# Create DataLoaders
 train_loader = NeighborLoader(
     data,
-    num_neighbors=[10, 10],  # Adjust neighbor sampling per layer as needed
-    input_nodes=('user', train_indices),
+    num_neighbors=[10, 10],
+    input_nodes=('user', data['user'].train_mask),
     batch_size=64,
     shuffle=True,
 )
@@ -77,67 +94,11 @@ train_loader = NeighborLoader(
 test_loader = NeighborLoader(
     data,
     num_neighbors=[10, 10],
-    input_nodes=('user', test_indices),
+    input_nodes=('user', data['user'].test_mask),
     batch_size=64,
     shuffle=False,
 )
 
-# --- Define the Heterogeneous GNN Model ---
-class HeteroGNNWithReverse(torch.nn.Module):
-    def __init__(self, in_channels_dict, hidden_channels, out_channels):
-        super().__init__()
-        # Define the first heterogeneous convolution layer.
-        self.conv1 = HeteroConv({
-            ('user', 'asks', 'question'): SAGEConv(in_channels_dict['user'], hidden_channels),
-            ('question', 'rev_asks', 'user'): SAGEConv(in_channels_dict['question'], hidden_channels),
-            ('question', 'has', 'answer'): SAGEConv(in_channels_dict['question'], hidden_channels),
-            ('answer', 'rev_has', 'question'): SAGEConv(in_channels_dict['answer'], hidden_channels),
-            ('user', 'answers', 'answer'): SAGEConv(in_channels_dict['user'], hidden_channels),
-            ('answer', 'rev_answers', 'user'): SAGEConv(in_channels_dict['answer'], hidden_channels),
-            ('question', 'accepted_answer', 'answer'): SAGEConv(in_channels_dict['question'], hidden_channels),
-            ('answer', 'rev_accepted', 'question'): SAGEConv(in_channels_dict['answer'], hidden_channels),
-            ('user', 'self_loop', 'user'): SAGEConv(in_channels_dict['user'], hidden_channels),
-        }, aggr='sum')
-
-        # Second heterogeneous convolution layer.
-        self.conv2 = HeteroConv({
-            ('user', 'asks', 'question'): SAGEConv(hidden_channels, hidden_channels),
-            ('question', 'rev_asks', 'user'): SAGEConv(hidden_channels, hidden_channels),
-            ('question', 'has', 'answer'): SAGEConv(hidden_channels, hidden_channels),
-            ('answer', 'rev_has', 'question'): SAGEConv(hidden_channels, hidden_channels),
-            ('user', 'answers', 'answer'): SAGEConv(hidden_channels, hidden_channels),
-            ('answer', 'rev_answers', 'user'): SAGEConv(hidden_channels, hidden_channels),
-            ('question', 'accepted_answer', 'answer'): SAGEConv(hidden_channels, hidden_channels),
-            ('answer', 'rev_accepted', 'question'): SAGEConv(hidden_channels, hidden_channels),
-            ('user', 'self_loop', 'user'): SAGEConv(hidden_channels, hidden_channels),
-        }, aggr='sum')
-
-        # Final classification layer for user nodes.
-        self.user_lin = torch.nn.Linear(hidden_channels, out_channels)
-
-    def forward(self, x_dict, edge_index_dict):
-        # Apply first conv layer with ReLU activation.
-        x_dict = self.conv1(x_dict, edge_index_dict)
-        for node_type in x_dict:
-            x_dict[node_type] = F.relu(x_dict[node_type])
-        # Apply second conv layer.
-        x_dict = self.conv2(x_dict, edge_index_dict)
-        for node_type in x_dict:
-            x_dict[node_type] = F.relu(x_dict[node_type])
-        # Classify only the user nodes.
-        out_user = self.user_lin(x_dict['user'])
-        return out_user
-
-# --- Initialize Model and Optimizer ---
-in_channels_dict = {
-    'user': data['user'].x.size(-1),
-    'question': data['question'].x.size(-1),
-    'answer': data['answer'].x.size(-1)
-}
-model = HeteroGNNWithReverse(in_channels_dict, hidden_channels=32, out_channels=2).to(device)
-optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=1e-5)
-
-# --- Training Function Using the DataLoader ---
 def train():
     model.train()
     total_loss = 0
@@ -200,20 +161,25 @@ def test():
         all_labels.append(batch['user'].y.cpu())
         total_correct += (preds == batch['user'].y).sum().item()
         total_examples += batch['user'].y.size(0)
-    accuracy = total_correct / total_examples
+    # accuracy = total_correct / total_examples
     all_preds = torch.cat(all_preds, dim=0).numpy()
     all_labels = torch.cat(all_labels, dim=0).numpy()
-    f1 = f1_score(all_labels, all_preds, average='macro')
-    return accuracy, f1
+    metrics = Metrics.compute_metrics(all_labels, all_preds)
+    
+    return metrics
 
-# --- Training Loop ---
+# Training loop
 num_epochs = 50
 for epoch in range(1, num_epochs + 1):
     loss = train()
     if epoch % 5 == 0:
         print(f"Epoch {epoch:03d} - Loss: {loss:.4f}")
 
-# Evaluate the model on the test data.
-test_accuracy, test_f1 = test()
-print(f"Test Accuracy: {test_accuracy:.4f}")
-print(f"Test F1 Score: {test_f1:.4f}")
+# Evaluate model
+test_metrics = test()
+
+print(f"Test Performance Metrics - Recall: {test_metrics['recall']:.4f}")
+print(f"Test Performance Metrics - Precision: {test_metrics['precision']:.4f}")
+print(f"Test Performance Metrics - F1-score: {test_metrics['f1_score']:.4f}")
+print(f"Test Performance Metrics - Accuracy: {test_metrics['accuracy']:.4f}")
+
