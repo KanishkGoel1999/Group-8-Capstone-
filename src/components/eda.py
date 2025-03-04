@@ -15,10 +15,10 @@ class EDA:
         """Loads the dataset from the file path."""
         self.df = pd.read_csv(self.file_path)
     
-    def preprocess_data(self):
+    def preprocess_data(self, columns):
         """Drops non-relevant columns from the dataset."""
         if self.df is not None:
-            self.df = self.df.drop(columns=["user_id", "reputation", "display_name"], errors='ignore')
+            self.df = self.df.drop(columns=columns, errors='ignore')
     
     def compute_correlation(self):
         """Computes and returns the correlation matrix."""
