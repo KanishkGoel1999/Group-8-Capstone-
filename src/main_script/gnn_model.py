@@ -11,6 +11,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from components.metric import Metrics
 from components.model import Models
 from components.constants import EDGE_TYPES
+from components.utils import get_edge_index_dict
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -52,19 +53,7 @@ def add_reverse_and_self_loop_edges(data):
 
 
 data = add_reverse_and_self_loop_edges(data)
-
-edge_index_dict = {
-    EDGE_TYPES['ASKS']: data[EDGE_TYPES['ASKS']].edge_index,
-    EDGE_TYPES['REV_ASKS']: data[EDGE_TYPES['REV_ASKS']].edge_index,
-    EDGE_TYPES['HAS']: data[EDGE_TYPES['HAS']].edge_index,
-    EDGE_TYPES['REV_HAS']: data[EDGE_TYPES['REV_HAS']].edge_index,
-    EDGE_TYPES['ANSWERS']: data[EDGE_TYPES['ANSWERS']].edge_index,
-    EDGE_TYPES['REV_ANSWERS']: data[EDGE_TYPES['REV_ANSWERS']].edge_index,
-    EDGE_TYPES['ACCEPTED_ANSWER']: data[EDGE_TYPES['ACCEPTED_ANSWER']].edge_index,
-    EDGE_TYPES['REV_ACCEPTED']: data[EDGE_TYPES['REV_ACCEPTED']].edge_index,
-    # Include the self-loop relation for user nodes:
-    EDGE_TYPES['SELF_LOOP']: data[EDGE_TYPES['SELF_LOOP']].edge_index,
-}
+edge_index_dict = get_edge_index_dict(data)
 # --- Randomly Split the User Nodes into Train and Test Sets ---
 num_users = data['user'].num_nodes
 indices = torch.randperm(num_users)       # Random permutation of user node indices
@@ -112,29 +101,7 @@ def train():
             'answer': batch['answer'].x
         }
         # Build the edge index dictionary from the subgraph in the batch.
-        edge_index_dict = {
-            EDGE_TYPES['ASKS']: batch[EDGE_TYPES['ASKS']].edge_index,
-            EDGE_TYPES['REV_ASKS']: batch[EDGE_TYPES['REV_ASKS']].edge_index,
-            EDGE_TYPES['HAS']: batch[EDGE_TYPES['HAS']].edge_index,
-            EDGE_TYPES['REV_HAS']: batch[EDGE_TYPES['REV_HAS']].edge_index,
-            EDGE_TYPES['ANSWERS']: batch[EDGE_TYPES['ANSWERS']].edge_index,
-            EDGE_TYPES['REV_ANSWERS']: batch[EDGE_TYPES['REV_ANSWERS']].edge_index,
-            EDGE_TYPES['ACCEPTED_ANSWER']: batch[EDGE_TYPES['ACCEPTED_ANSWER']].edge_index,
-            EDGE_TYPES['REV_ACCEPTED']: batch[EDGE_TYPES['REV_ACCEPTED']].edge_index,
-            # Include the self-loop relation for user nodes:
-            EDGE_TYPES['SELF_LOOP']: batch[EDGE_TYPES['SELF_LOOP']].edge_index,
-        }
-        # edge_index_dict = {
-        #     ('user', 'asks', 'question'): batch[('user', 'asks', 'question')].edge_index,
-        #     ('question', 'rev_asks', 'user'): batch[('question', 'rev_asks', 'user')].edge_index,
-        #     ('question', 'has', 'answer'): batch[('question', 'has', 'answer')].edge_index,
-        #     ('answer', 'rev_has', 'question'): batch[('answer', 'rev_has', 'question')].edge_index,
-        #     ('user', 'answers', 'answer'): batch[('user', 'answers', 'answer')].edge_index,
-        #     ('answer', 'rev_answers', 'user'): batch[('answer', 'rev_answers', 'user')].edge_index,
-        #     ('question', 'accepted_answer', 'answer'): batch[('question', 'accepted_answer', 'answer')].edge_index,
-        #     ('answer', 'rev_accepted', 'question'): batch[('answer', 'rev_accepted', 'question')].edge_index,
-        #     ('user', 'self_loop', 'user'): batch[('user', 'self_loop', 'user')].edge_index,
-        # }
+        edge_index_dict = get_edge_index_dict(batch)
         out = model(x_dict, edge_index_dict)
         # Compute loss on the current mini-batch of user nodes.
         loss = F.cross_entropy(out, batch['user'].y)
@@ -157,29 +124,7 @@ def test():
             'question': batch['question'].x,
             'answer': batch['answer'].x
         }
-        edge_index_dict = {
-            EDGE_TYPES['ASKS']: batch[EDGE_TYPES['ASKS']].edge_index,
-            EDGE_TYPES['REV_ASKS']: batch[EDGE_TYPES['REV_ASKS']].edge_index,
-            EDGE_TYPES['HAS']: batch[EDGE_TYPES['HAS']].edge_index,
-            EDGE_TYPES['REV_HAS']: batch[EDGE_TYPES['REV_HAS']].edge_index,
-            EDGE_TYPES['ANSWERS']: batch[EDGE_TYPES['ANSWERS']].edge_index,
-            EDGE_TYPES['REV_ANSWERS']: batch[EDGE_TYPES['REV_ANSWERS']].edge_index,
-            EDGE_TYPES['ACCEPTED_ANSWER']: batch[EDGE_TYPES['ACCEPTED_ANSWER']].edge_index,
-            EDGE_TYPES['REV_ACCEPTED']: batch[EDGE_TYPES['REV_ACCEPTED']].edge_index,
-            # Include the self-loop relation for user nodes:
-            EDGE_TYPES['SELF_LOOP']: batch[EDGE_TYPES['SELF_LOOP']].edge_index,
-        }
-        # edge_index_dict = {
-        #     ('user', 'asks', 'question'): batch[('user', 'asks', 'question')].edge_index,
-        #     ('question', 'rev_asks', 'user'): batch[('question', 'rev_asks', 'user')].edge_index,
-        #     ('question', 'has', 'answer'): batch[('question', 'has', 'answer')].edge_index,
-        #     ('answer', 'rev_has', 'question'): batch[('answer', 'rev_has', 'question')].edge_index,
-        #     ('user', 'answers', 'answer'): batch[('user', 'answers', 'answer')].edge_index,
-        #     ('answer', 'rev_answers', 'user'): batch[('answer', 'rev_answers', 'user')].edge_index,
-        #     ('question', 'accepted_answer', 'answer'): batch[('question', 'accepted_answer', 'answer')].edge_index,
-        #     ('answer', 'rev_accepted', 'question'): batch[('answer', 'rev_accepted', 'question')].edge_index,
-        #     ('user', 'self_loop', 'user'): batch[('user', 'self_loop', 'user')].edge_index,
-        # }
+        edge_index_dict = get_edge_index_dict(batch)
         out = model(x_dict, edge_index_dict)
         preds = out.argmax(dim=-1)
         all_preds.append(preds.cpu())
