@@ -2,6 +2,12 @@ from xgboost import XGBClassifier
 import torch
 import torch.nn.functional as F
 from torch_geometric.nn import HeteroConv, SAGEConv
+import sys
+import os
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+from components.constants import EDGE_TYPES
 
 class Models:
     """
@@ -38,38 +44,41 @@ class Models:
             def __init__(self, in_channels_dict, hidden_channels, out_channels):
                 super().__init__()
                 self.conv1 = HeteroConv({
-                    ('user', 'asks', 'question'): SAGEConv(in_channels_dict['user'], hidden_channels),
-                    ('question', 'rev_asks', 'user'): SAGEConv(in_channels_dict['question'], hidden_channels),
-                    ('question', 'has', 'answer'): SAGEConv(in_channels_dict['question'], hidden_channels),
-                    ('answer', 'rev_has', 'question'): SAGEConv(in_channels_dict['answer'], hidden_channels),
-                    ('user', 'answers', 'answer'): SAGEConv(in_channels_dict['user'], hidden_channels),
-                    ('answer', 'rev_answers', 'user'): SAGEConv(in_channels_dict['answer'], hidden_channels),
-                    ('question', 'accepted_answer', 'answer'): SAGEConv(in_channels_dict['question'], hidden_channels),
-                    ('answer', 'rev_accepted', 'question'): SAGEConv(in_channels_dict['answer'], hidden_channels),
-                    ('user', 'self_loop', 'user'): SAGEConv(in_channels_dict['user'], hidden_channels),
+                    EDGE_TYPES['ASKS']: SAGEConv(in_channels_dict['user'], hidden_channels),
+                    EDGE_TYPES['REV_ASKS']: SAGEConv(in_channels_dict['question'], hidden_channels),
+                    EDGE_TYPES['HAS']: SAGEConv(in_channels_dict['question'], hidden_channels),
+                    EDGE_TYPES['REV_HAS']: SAGEConv(in_channels_dict['answer'], hidden_channels),
+                    EDGE_TYPES['ANSWERS']: SAGEConv(in_channels_dict['user'], hidden_channels),
+                    EDGE_TYPES['REV_ANSWERS']: SAGEConv(in_channels_dict['answer'], hidden_channels),
+                    EDGE_TYPES['ACCEPTED_ANSWER']: SAGEConv(in_channels_dict['question'], hidden_channels),
+                    EDGE_TYPES['REV_ACCEPTED']: SAGEConv(in_channels_dict['answer'], hidden_channels),
+                    EDGE_TYPES['SELF_LOOP']: SAGEConv(in_channels_dict['user'], hidden_channels),
                 }, aggr='sum')
 
                 self.conv2 = HeteroConv({
-                    ('user', 'asks', 'question'): SAGEConv(hidden_channels, hidden_channels),
-                    ('question', 'rev_asks', 'user'): SAGEConv(hidden_channels, hidden_channels),
-                    ('question', 'has', 'answer'): SAGEConv(hidden_channels, hidden_channels),
-                    ('answer', 'rev_has', 'question'): SAGEConv(hidden_channels, hidden_channels),
-                    ('user', 'answers', 'answer'): SAGEConv(hidden_channels, hidden_channels),
-                    ('answer', 'rev_answers', 'user'): SAGEConv(hidden_channels, hidden_channels),
-                    ('question', 'accepted_answer', 'answer'): SAGEConv(hidden_channels, hidden_channels),
-                    ('answer', 'rev_accepted', 'question'): SAGEConv(hidden_channels, hidden_channels),
-                    ('user', 'self_loop', 'user'): SAGEConv(hidden_channels, hidden_channels),
+                    EDGE_TYPES['ASKS']: SAGEConv(hidden_channels, hidden_channels),
+                    EDGE_TYPES['REV_ASKS']: SAGEConv(hidden_channels, hidden_channels),
+                    EDGE_TYPES['HAS']: SAGEConv(hidden_channels, hidden_channels),
+                    EDGE_TYPES['REV_HAS']: SAGEConv(hidden_channels, hidden_channels),
+                    EDGE_TYPES['ANSWERS']: SAGEConv(hidden_channels, hidden_channels),
+                    EDGE_TYPES['REV_ANSWERS']: SAGEConv(hidden_channels, hidden_channels),
+                    EDGE_TYPES['ACCEPTED_ANSWER']: SAGEConv(hidden_channels, hidden_channels),
+                    EDGE_TYPES['REV_ACCEPTED']: SAGEConv(hidden_channels, hidden_channels),
+                    EDGE_TYPES['SELF_LOOP']: SAGEConv(hidden_channels, hidden_channels),
                 }, aggr='sum')
 
                 self.user_lin = torch.nn.Linear(hidden_channels, out_channels)
 
             def forward(self, x_dict, edge_index_dict):
+                # Apply first conv layer with ReLU activation.
                 x_dict = self.conv1(x_dict, edge_index_dict)
                 for node_type in x_dict:
                     x_dict[node_type] = F.relu(x_dict[node_type])
+                # Apply second conv layer.
                 x_dict = self.conv2(x_dict, edge_index_dict)
                 for node_type in x_dict:
                     x_dict[node_type] = F.relu(x_dict[node_type])
+                # Classify only the user nodes.
                 out_user = self.user_lin(x_dict['user'])
                 return out_user
 
