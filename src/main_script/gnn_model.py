@@ -10,6 +10,8 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from components.metric import Metrics
 from components.model import Models
+from components.constants import EDGE_TYPES
+from components.utils import get_edge_index_dict
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -22,48 +24,36 @@ data = transform(data)
 data = data.to(device)
 def add_reverse_and_self_loop_edges(data):
     # Reverse for user -> question (asks)
-    if ('user', 'asks', 'question') in data.edge_types:
-        edge_index = data[('user', 'asks', 'question')].edge_index
-        data[('question', 'rev_asks', 'user')].edge_index = edge_index.flip(0)
+    if EDGE_TYPES['ASKS'] in data.edge_types:
+        edge_index = data[EDGE_TYPES['ASKS']].edge_index
+        data[EDGE_TYPES['REV_ASKS']].edge_index = edge_index.flip(0)
 
     # Reverse for user -> answer (answers)
-    if ('user', 'answers', 'answer') in data.edge_types:
-        edge_index = data[('user', 'answers', 'answer')].edge_index
-        data[('answer', 'rev_answers', 'user')].edge_index = edge_index.flip(0)
+    if EDGE_TYPES['ANSWERS'] in data.edge_types:
+        edge_index = data[EDGE_TYPES['ANSWERS']].edge_index
+        data[EDGE_TYPES['REV_ANSWERS']].edge_index = edge_index.flip(0)
 
     # Reverse for question -> answer (has)
-    if ('question', 'has', 'answer') in data.edge_types:
-        edge_index = data[('question', 'has', 'answer')].edge_index
-        data[('answer', 'rev_has', 'question')].edge_index = edge_index.flip(0)
+    if EDGE_TYPES['HAS'] in data.edge_types:
+        edge_index = data[EDGE_TYPES['HAS']].edge_index
+        data[EDGE_TYPES['REV_HAS']].edge_index = edge_index.flip(0)
 
     # Reverse for question -> answer (accepted_answer)
-    if ('question', 'accepted_answer', 'answer') in data.edge_types:
-        edge_index = data[('question', 'accepted_answer', 'answer')].edge_index
-        data[('answer', 'rev_accepted', 'question')].edge_index = edge_index.flip(0)
+    if EDGE_TYPES['ACCEPTED_ANSWER'] in data.edge_types:
+        edge_index = data[EDGE_TYPES['ACCEPTED_ANSWER']].edge_index
+        data[EDGE_TYPES['REV_ACCEPTED']].edge_index = edge_index.flip(0)
 
     # Add self-loop for user nodes: ensure each user node receives its own message.
     num_users = data['user'].num_nodes
     row = torch.arange(num_users, dtype=torch.long)
     self_loop_edge = torch.stack([row, row], dim=0)
-    data[('user', 'self_loop', 'user')].edge_index = self_loop_edge
+    data[EDGE_TYPES['SELF_LOOP']].edge_index = self_loop_edge
 
     return data
 
 
 data = add_reverse_and_self_loop_edges(data)
-
-edge_index_dict = {
-    ('user', 'asks', 'question'): data[('user', 'asks', 'question')].edge_index,
-    ('question', 'rev_asks', 'user'): data[('question', 'rev_asks', 'user')].edge_index,
-    ('question', 'has', 'answer'): data[('question', 'has', 'answer')].edge_index,
-    ('answer', 'rev_has', 'question'): data[('answer', 'rev_has', 'question')].edge_index,
-    ('user', 'answers', 'answer'): data[('user', 'answers', 'answer')].edge_index,
-    ('answer', 'rev_answers', 'user'): data[('answer', 'rev_answers', 'user')].edge_index,
-    ('question', 'accepted_answer', 'answer'): data[('question', 'accepted_answer', 'answer')].edge_index,
-    ('answer', 'rev_accepted', 'question'): data[('answer', 'rev_accepted', 'question')].edge_index,
-    # Include the self-loop relation for user nodes:
-    ('user', 'self_loop', 'user'): data[('user', 'self_loop', 'user')].edge_index,
-}
+edge_index_dict = get_edge_index_dict(data)
 # --- Randomly Split the User Nodes into Train and Test Sets ---
 num_users = data['user'].num_nodes
 indices = torch.randperm(num_users)       # Random permutation of user node indices
@@ -77,10 +67,6 @@ in_channels_dict = {
     'question': data['question'].x.size(-1),
     'answer': data['answer'].x.size(-1)
 }
-
-# Initialize GNN model
-model = Models.get_gnn_model(in_channels_dict, hidden_channels=32, out_channels=2).to(device)
-optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=1e-5)
 
 # Create DataLoaders
 train_loader = NeighborLoader(
@@ -99,6 +85,10 @@ test_loader = NeighborLoader(
     shuffle=False,
 )
 
+# Initialize GNN model
+model = Models.get_gnn_model(in_channels_dict, hidden_channels=32, out_channels=2).to(device)
+optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=1e-5)
+
 def train():
     model.train()
     total_loss = 0
@@ -111,17 +101,7 @@ def train():
             'answer': batch['answer'].x
         }
         # Build the edge index dictionary from the subgraph in the batch.
-        edge_index_dict = {
-            ('user', 'asks', 'question'): batch[('user', 'asks', 'question')].edge_index,
-            ('question', 'rev_asks', 'user'): batch[('question', 'rev_asks', 'user')].edge_index,
-            ('question', 'has', 'answer'): batch[('question', 'has', 'answer')].edge_index,
-            ('answer', 'rev_has', 'question'): batch[('answer', 'rev_has', 'question')].edge_index,
-            ('user', 'answers', 'answer'): batch[('user', 'answers', 'answer')].edge_index,
-            ('answer', 'rev_answers', 'user'): batch[('answer', 'rev_answers', 'user')].edge_index,
-            ('question', 'accepted_answer', 'answer'): batch[('question', 'accepted_answer', 'answer')].edge_index,
-            ('answer', 'rev_accepted', 'question'): batch[('answer', 'rev_accepted', 'question')].edge_index,
-            ('user', 'self_loop', 'user'): batch[('user', 'self_loop', 'user')].edge_index,
-        }
+        edge_index_dict = get_edge_index_dict(batch)
         out = model(x_dict, edge_index_dict)
         # Compute loss on the current mini-batch of user nodes.
         loss = F.cross_entropy(out, batch['user'].y)
@@ -144,17 +124,7 @@ def test():
             'question': batch['question'].x,
             'answer': batch['answer'].x
         }
-        edge_index_dict = {
-            ('user', 'asks', 'question'): batch[('user', 'asks', 'question')].edge_index,
-            ('question', 'rev_asks', 'user'): batch[('question', 'rev_asks', 'user')].edge_index,
-            ('question', 'has', 'answer'): batch[('question', 'has', 'answer')].edge_index,
-            ('answer', 'rev_has', 'question'): batch[('answer', 'rev_has', 'question')].edge_index,
-            ('user', 'answers', 'answer'): batch[('user', 'answers', 'answer')].edge_index,
-            ('answer', 'rev_answers', 'user'): batch[('answer', 'rev_answers', 'user')].edge_index,
-            ('question', 'accepted_answer', 'answer'): batch[('question', 'accepted_answer', 'answer')].edge_index,
-            ('answer', 'rev_accepted', 'question'): batch[('answer', 'rev_accepted', 'question')].edge_index,
-            ('user', 'self_loop', 'user'): batch[('user', 'self_loop', 'user')].edge_index,
-        }
+        edge_index_dict = get_edge_index_dict(batch)
         out = model(x_dict, edge_index_dict)
         preds = out.argmax(dim=-1)
         all_preds.append(preds.cpu())
