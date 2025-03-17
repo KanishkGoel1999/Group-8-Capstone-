@@ -1,6 +1,6 @@
 # metrics.py
 import numpy as np
-from sklearn.metrics import recall_score, precision_score, f1_score, accuracy_score, confusion_matrix
+from sklearn.metrics import recall_score, precision_score, f1_score, accuracy_score, confusion_matrix, roc_auc_score
 
 class Metrics:
     """
@@ -23,7 +23,8 @@ class Metrics:
             "recall": recall_score(y_true, y_pred, average='macro'),
             "precision": precision_score(y_true, y_pred, average='macro'),
             "f1_score": f1_score(y_true, y_pred, average='macro'),
-            "accuracy": accuracy_score(y_true, y_pred)
+            "accuracy": accuracy_score(y_true, y_pred),
+            "auc": roc_auc_score(y_true, y_pred, average='macro')
         }
     
     @staticmethod
