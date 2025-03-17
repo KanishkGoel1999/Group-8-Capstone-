@@ -13,6 +13,11 @@ from components.model import Models
 from components.constants import EDGE_TYPES
 from components.utils import get_edge_index_dict, train_mini_batch, train_full_batch, test_mini_batch, test_full_batch
 
+import matplotlib.pyplot as plt
+
+train_losses = []
+test_accuracies = []
+
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 data = torch.load("hetero_graph.pt")
@@ -111,16 +116,36 @@ if batch_size != 0: # mini-batch or full-batch condition
 for epoch in range(1, num_epochs + 1):
     # call mini-batch training or full-batch training based on batch_size param
     if batch_size != 0:
-        loss = train_mini_batch(model, train_loader, optimizer)
+        loss, epoch_train_losses = train_mini_batch(model, train_loader, optimizer)
         if epoch % 5 == 0:
             print(f"Epoch {epoch:03d} - Loss: {loss:.4f}")
-        test_metrics = test_mini_batch(model, test_loader)
+        test_metrics, epoch_test_accuracies = test_mini_batch(model, test_loader)
     else:
         print('Full-batch Training started!!!!!!')
-        loss = train_full_batch(model, optimizer, data, train_mask)
+        loss, epoch_train_losses = train_full_batch(model, optimizer, data, train_mask)
         if epoch % 5 == 0:
             print(f"Full_batch {epoch:03d} - Loss: {loss:.4f}")
-        test_metrics = test_full_batch(model, data, test_mask)
+        test_metrics, epoch_test_accuracies = test_full_batch(model, data, test_mask)
+
+plt.figure(figsize=(12, 5))
+
+# Plot Loss Curve
+plt.subplot(1, 2, 1)
+plt.plot(range(1, len(train_losses) + 1), train_losses, label="Train Loss", color="red")
+plt.xlabel("Epochs")
+plt.ylabel("Loss")
+plt.title("GNN Training Loss Curve")
+plt.legend()
+
+# Plot Accuracy Curve
+plt.subplot(1, 2, 2)
+plt.plot(range(1, len(test_accuracies) + 1), test_accuracies, label="Test Accuracy", color="blue")
+plt.xlabel("Epochs")
+plt.ylabel("Accuracy")
+plt.title("GNN Test Accuracy Curve")
+plt.legend()
+
+plt.show()
 
 print(f"Test Performance Metrics - Recall: {test_metrics['recall']:.4f}")
 print(f"Test Performance Metrics - Precision: {test_metrics['precision']:.4f}")
