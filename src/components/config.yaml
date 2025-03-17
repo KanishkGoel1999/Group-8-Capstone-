@@ -1,0 +1,37 @@
+# Configuration file for hyperparameter tuning
+
+gnn:
+  sets:
+    - hidden_channels: 32
+      out_channels: 2
+      aggregation: "sum"
+      learning_rate: 0.01
+      weight_decay: 1e-5
+      num_epochs: 50
+      batch_size: 64
+      num_neighbors: [10, 10]  # Neighbor sampling per layer
+    - hidden_channels: 64
+      out_channels: 2
+      aggregation: "mean"
+      learning_rate: 0.005
+      weight_decay: 1e-4
+      num_epochs: 100
+      batch_size: 128
+      num_neighbors: [15, 15]
+
+xgboost:
+  sets:
+    - n_estimators: [50, 100, 200]
+      max_depth: [3, 5, 7]
+      learning_rate: [0.01, 0.05, 0.1]
+      subsample: [0.5, 0.7, 1.0]
+      colsample_bytree: [0.5, 0.7, 1.0]
+      gamma: [0, 0.1, 0.2]
+      scale_pos_weight: "auto"
+    - n_estimators: [100, 200, 300]
+      max_depth: [5, 10, 15]
+      learning_rate: [0.005, 0.02, 0.1]
+      subsample: [0.6, 0.8, 1.0]
+      colsample_bytree: [0.6, 0.8, 1.0]
+      gamma: [0, 0.05, 0.15]
+      scale_pos_weight: "balanced"

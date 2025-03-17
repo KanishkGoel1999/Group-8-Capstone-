@@ -6,7 +6,7 @@ from torch_geometric.transforms import RandomNodeSplit
 
 import sys
 import os
-
+import yaml
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from components.metric import Metrics
 from components.model import Models
@@ -16,6 +16,14 @@ from components.utils import get_edge_index_dict
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 data = torch.load("hetero_graph.pt")
+
+# Load YAML configuration
+config_path = os.path.join(os.path.dirname(__file__), "..", "components", "config.yaml")
+with open(config_path, "r") as file:
+    config = yaml.safe_load(file)
+
+# Load GNN hyperparameters from config
+gnn_config = config["gnn"]["sets"][0]  # Select first set, change index for different configurations
 
 # Apply RandomNodeSplit transformation
 transform = RandomNodeSplit(split="train_rest", num_val=0.1, num_test=0.1)
@@ -68,26 +76,44 @@ in_channels_dict = {
     'answer': data['answer'].x.size(-1)
 }
 
+# Initialize GNN model
+model = Models.get_gnn_model(
+    in_channels_dict,
+    hidden_channels=int(gnn_config["hidden_channels"]),
+    out_channels=int(gnn_config["out_channels"])
+).to(device)
+
+# Optimizer
+optimizer = torch.optim.Adam(
+    model.parameters(), 
+    lr=float(gnn_config["learning_rate"]), 
+    weight_decay=float(gnn_config["weight_decay"])
+)
+
+num_epochs = gnn_config["num_epochs"]
+batch_size = gnn_config["batch_size"]
+num_neighbors = gnn_config["num_neighbors"]
+
 # Create DataLoaders
 train_loader = NeighborLoader(
     data,
-    num_neighbors=[10, 10],
+    num_neighbors=num_neighbors,
     input_nodes=('user', data['user'].train_mask),
-    batch_size=64,
+    batch_size=batch_size,
     shuffle=True,
 )
 
 test_loader = NeighborLoader(
     data,
-    num_neighbors=[10, 10],
+    num_neighbors=num_neighbors,
     input_nodes=('user', data['user'].test_mask),
-    batch_size=64,
+    batch_size=batch_size,
     shuffle=False,
 )
 
 # Initialize GNN model
-model = Models.get_gnn_model(in_channels_dict, hidden_channels=32, out_channels=2).to(device)
-optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=1e-5)
+# model = Models.get_gnn_model(in_channels_dict, hidden_channels=32, out_channels=2).to(device)
+# optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=1e-5)
 
 def train():
     model.train()
@@ -139,7 +165,7 @@ def test():
     return metrics
 
 # Training loop
-num_epochs = 50
+# num_epochs = 50
 for epoch in range(1, num_epochs + 1):
     loss = train()
     if epoch % 5 == 0:
