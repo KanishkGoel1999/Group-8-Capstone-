@@ -23,7 +23,7 @@ with open(config_path, "r") as file:
     config = yaml.safe_load(file)
 
 # Load GNN hyperparameters from config
-gnn_config = config["gnn"]["sets"][0]  # Select first set, change index for different configurations
+gnn_config = config["gnn"]["sets"][1]  # change index for different configurations
 
 # Apply RandomNodeSplit transformation
 transform = RandomNodeSplit(split="train_rest", num_val=0.1, num_test=0.1)
@@ -64,10 +64,10 @@ data = add_reverse_and_self_loop_edges(data)
 edge_index_dict = get_edge_index_dict(data)
 # --- Randomly Split the User Nodes into Train and Test Sets ---
 num_users = data['user'].num_nodes
-indices = torch.randperm(num_users)       # Random permutation of user node indices
-train_size = int(0.8 * num_users)
-train_indices = indices[:train_size]
-test_indices = indices[train_size:]
+# indices = torch.randperm(num_users)       # Random permutation of user node indices
+# train_size = int(0.8 * num_users)
+# train_indices = indices[:train_size]
+# test_indices = indices[train_size:]
 
 # Define input channels for GNN model
 in_channels_dict = {

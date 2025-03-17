@@ -15,8 +15,24 @@ gnn:
       aggregation: "mean"
       learning_rate: 0.005
       weight_decay: 1e-4
-      num_epochs: 100
+      num_epochs: 200
       batch_size: 128
+      num_neighbors: [15, 15]
+    - hidden_channels: 64
+      out_channels: 2
+      aggregation: "mean"
+      learning_rate: 0.005
+      weight_decay: 1e-4
+      num_epochs: 100
+      batch_size: None # full-batch training
+      num_neighbors: [15, 15]
+    - hidden_channels: 64
+      out_channels: 2
+      aggregation: "lstm"
+      learning_rate: 0.005
+      weight_decay: 1e-4
+      num_epochs: 100
+      batch_size: None # full-batch training
       num_neighbors: [15, 15]
 
 xgboost:

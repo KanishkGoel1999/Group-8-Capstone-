@@ -16,8 +16,8 @@ config_path = os.path.join(os.path.dirname(__file__), "config.yaml")
 # Load the YAML configuration
 with open(config_path, "r") as file:
     config = yaml.safe_load(file)
-gnn_config = config["gnn"]["sets"][0]  # Use first GNN configuration
-xgb_config = config["xgboost"]["sets"][0]  # Use first XGBoost configuration
+gnn_config = config["gnn"]["sets"][1]  # change index for different configurations
+xgb_config = config["xgboost"]["sets"][0]  # change index for different configurations
 
 class Models:
     """
