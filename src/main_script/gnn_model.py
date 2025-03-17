@@ -11,7 +11,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from components.metric import Metrics
 from components.model import Models
 from components.constants import EDGE_TYPES
-from components.utils import get_edge_index_dict
+from components.utils import get_edge_index_dict, train_mini_batch, train_full_batch, test_mini_batch, test_full_batch
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -24,7 +24,10 @@ with open(config_path, "r") as file:
 
 # Load GNN hyperparameters from config
 gnn_config = config["gnn"]["sets"][1]  # change index for different configurations
-
+num_epochs = gnn_config["num_epochs"]
+batch_size = gnn_config["batch_size"]
+num_neighbors = gnn_config["num_neighbors"]
+print(batch_size)
 # Apply RandomNodeSplit transformation
 transform = RandomNodeSplit(split="train_rest", num_val=0.1, num_test=0.1)
 data = transform(data)
@@ -62,12 +65,6 @@ def add_reverse_and_self_loop_edges(data):
 
 data = add_reverse_and_self_loop_edges(data)
 edge_index_dict = get_edge_index_dict(data)
-# --- Randomly Split the User Nodes into Train and Test Sets ---
-num_users = data['user'].num_nodes
-# indices = torch.randperm(num_users)       # Random permutation of user node indices
-# train_size = int(0.8 * num_users)
-# train_indices = indices[:train_size]
-# test_indices = indices[train_size:]
 
 # Define input channels for GNN model
 in_channels_dict = {
@@ -90,89 +87,138 @@ optimizer = torch.optim.Adam(
     weight_decay=float(gnn_config["weight_decay"])
 )
 
-num_epochs = gnn_config["num_epochs"]
-batch_size = gnn_config["batch_size"]
-num_neighbors = gnn_config["num_neighbors"]
+train_mask = data['user'].train_mask
+test_mask = data['user'].test_mask
+if batch_size != 0: # mini-batch or full-batch condition
+    print('Enteredddddddddddddd')
+    # Create DataLoaders
+    train_loader = NeighborLoader(
+        data,
+        num_neighbors=num_neighbors,
+        input_nodes=('user', train_mask),
+        batch_size=batch_size,
+        shuffle=True,
+    )
 
-# Create DataLoaders
-train_loader = NeighborLoader(
-    data,
-    num_neighbors=num_neighbors,
-    input_nodes=('user', data['user'].train_mask),
-    batch_size=batch_size,
-    shuffle=True,
-)
-
-test_loader = NeighborLoader(
-    data,
-    num_neighbors=num_neighbors,
-    input_nodes=('user', data['user'].test_mask),
-    batch_size=batch_size,
-    shuffle=False,
-)
+    test_loader = NeighborLoader(
+        data,
+        num_neighbors=num_neighbors,
+        input_nodes=('user', test_mask),
+        batch_size=batch_size,
+        shuffle=False,
+    )
 
 # Initialize GNN model
 # model = Models.get_gnn_model(in_channels_dict, hidden_channels=32, out_channels=2).to(device)
 # optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=1e-5)
 
-def train():
-    model.train()
-    total_loss = 0
-    for batch in train_loader:
-        optimizer.zero_grad()
-        # Extract node features from the mini-batch for each node type.
-        x_dict = {
-            'user': batch['user'].x,
-            'question': batch['question'].x,
-            'answer': batch['answer'].x
-        }
-        # Build the edge index dictionary from the subgraph in the batch.
-        edge_index_dict = get_edge_index_dict(batch)
-        out = model(x_dict, edge_index_dict)
-        # Compute loss on the current mini-batch of user nodes.
-        loss = F.cross_entropy(out, batch['user'].y)
-        loss.backward()
-        optimizer.step()
-        total_loss += loss.item()
-    return total_loss / len(train_loader)
+# def train():
+#     model.train()
+#     total_loss = 0
+#     for batch in train_loader:
+#         optimizer.zero_grad()
+#         # Extract node features from the mini-batch for each node type.
+#         x_dict = {
+#             'user': batch['user'].x,
+#             'question': batch['question'].x,
+#             'answer': batch['answer'].x
+#         }
+#         # Build the edge index dictionary from the subgraph in the batch.
+#         edge_index_dict = get_edge_index_dict(batch)
+#         out = model(x_dict, edge_index_dict)
+#         # Compute loss on the current mini-batch of user nodes.
+#         loss = F.cross_entropy(out, batch['user'].y)
+#         loss.backward()
+#         optimizer.step()
+#         total_loss += loss.item()
+#     return total_loss / len(train_loader)
 
-# --- Evaluation Function Using the DataLoader ---
-@torch.no_grad()
-def test():
-    model.eval()
-    total_correct = 0
-    total_examples = 0
-    all_preds = []
-    all_labels = []
-    for batch in test_loader:
-        x_dict = {
-            'user': batch['user'].x,
-            'question': batch['question'].x,
-            'answer': batch['answer'].x
-        }
-        edge_index_dict = get_edge_index_dict(batch)
-        out = model(x_dict, edge_index_dict)
-        preds = out.argmax(dim=-1)
-        all_preds.append(preds.cpu())
-        all_labels.append(batch['user'].y.cpu())
-        total_correct += (preds == batch['user'].y).sum().item()
-        total_examples += batch['user'].y.size(0)
-    # accuracy = total_correct / total_examples
-    all_preds = torch.cat(all_preds, dim=0).numpy()
-    all_labels = torch.cat(all_labels, dim=0).numpy()
-    metrics = Metrics.compute_metrics(all_labels, all_preds)
+# full-batch training
+
+# def train():
+#     model.train()
+#     optimizer.zero_grad()
     
-    return metrics
+#     x_dict = {
+#         'user': data['user'].x,
+#         'question': data['question'].x,
+#         'answer': data['answer'].x
+#     }
+    
+#     edge_index_dict = get_edge_index_dict(data)
+#     out = model(x_dict, edge_index_dict)
 
-# Training loop
-# num_epochs = 50
+#     loss = F.cross_entropy(out[train_mask], data['user'].y[train_mask])
+    
+#     loss.backward()
+#     optimizer.step()
+    
+#     return loss.item()
+
+# @torch.no_grad()
+# def test():
+#     model.eval()
+#     total_correct = 0
+#     total_examples = 0
+#     all_preds = []
+#     all_labels = []
+#     for batch in test_loader:
+#         x_dict = {
+#             'user': batch['user'].x,
+#             'question': batch['question'].x,
+#             'answer': batch['answer'].x
+#         }
+#         edge_index_dict = get_edge_index_dict(batch)
+#         out = model(x_dict, edge_index_dict)
+#         preds = out.argmax(dim=-1)
+#         all_preds.append(preds.cpu())
+#         all_labels.append(batch['user'].y.cpu())
+#         total_correct += (preds == batch['user'].y).sum().item()
+#         total_examples += batch['user'].y.size(0)
+#     # accuracy = total_correct / total_examples
+#     all_preds = torch.cat(all_preds, dim=0).numpy()
+#     all_labels = torch.cat(all_labels, dim=0).numpy()
+#     metrics = Metrics.compute_metrics(all_labels, all_preds)
+    
+#     return metrics
+
+# --- Full-Batch ---
+# @torch.no_grad()
+# def test():
+#     model.eval()
+
+#     x_dict = {
+#         'user': data['user'].x,
+#         'question': data['question'].x,
+#         'answer': data['answer'].x
+#     }
+    
+#     edge_index_dict = get_edge_index_dict(data)
+#     out = model(x_dict, edge_index_dict)
+
+#     preds = out[test_mask].argmax(dim=-1)
+#     labels = data['user'].y[test_mask]
+
+#     all_preds = preds.cpu().numpy()
+#     all_labels = labels.cpu().numpy()
+    
+#     metrics = Metrics.compute_metrics(all_labels, all_preds)
+    
+#     return metrics
+
 for epoch in range(1, num_epochs + 1):
-    loss = train()
-    if epoch % 5 == 0:
-        print(f"Epoch {epoch:03d} - Loss: {loss:.4f}")
-
-# Evaluate model
-test_metrics = test()
+    # call mini-batch training or full-batch training based on batch_size param
+    if batch_size != 0:
+        loss = train_mini_batch(model, train_loader, optimizer)
+        if epoch % 5 == 0:
+            print(f"Epoch {epoch:03d} - Loss: {loss:.4f}")
+        test_metrics = test_mini_batch(model, test_loader)
+    else:
+        print('Full-batch Training started!!!!!!')
+        loss = train_full_batch(model, optimizer, data, train_mask)
+        if epoch % 5 == 0:
+            print(f"Full_batch {epoch:03d} - Loss: {loss:.4f}")
+        test_metrics = test_full_batch(model, data, test_mask)
 
 print(f"Test Performance Metrics - Recall: {test_metrics['recall']:.4f}")
 print(f"Test Performance Metrics - Precision: {test_metrics['precision']:.4f}")
