@@ -13,6 +13,7 @@ from components.utils import (
 )
 from components.metric import Metrics
 from components.model import Models
+import yaml
 
 # Load dataset
 file_path = "../data/preprocessed_data.csv"
@@ -39,15 +40,13 @@ scale_pos_weight = neg_count / pos_count
 print("Computed scale_pos_weight:", scale_pos_weight)
 
 # Hyperparameter tuning with RandomizedSearchCV for XGBoost
-param_dist = {
-    'n_estimators': [50, 100, 200, 300],
-    'max_depth': [3, 5, 7, 10, 15],
-    'learning_rate': [0.01, 0.05, 0.1, 0.2],
-    'subsample': [0.5, 0.7, 1.0],
-    'colsample_bytree': [0.5, 0.7, 1.0],
-    'gamma': [0, 0.1, 0.2, 0.5],
-    'scale_pos_weight': [scale_pos_weight]  # using computed imbalance ratio
-}
+# Load hyperparameters from config.yaml
+config_path = "../components/config.yaml"
+with open(config_path, "r") as file:
+    config = yaml.safe_load(file)
+
+param_dist = config["xgboost"]["sets"][1]
+param_dist['scale_pos_weight'] = [scale_pos_weight]  # using computed imbalance ratio
 
 # Initialize XGBoost model from Models class
 xgb_model = Models.get_xgboost_model()
