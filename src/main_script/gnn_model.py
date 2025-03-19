@@ -16,6 +16,8 @@ from components.utils import get_edge_index_dict, train_mini_batch, train_full_b
 import matplotlib.pyplot as plt
 
 train_losses = []
+train_accuracies = []
+test_losses = []
 test_accuracies = []
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -114,38 +116,22 @@ if batch_size != 0: # mini-batch or full-batch condition
     )
 
 for epoch in range(1, num_epochs + 1):
-    # call mini-batch training or full-batch training based on batch_size param
     if batch_size != 0:
-        loss, epoch_train_losses = train_mini_batch(model, train_loader, optimizer)
-        if epoch % 5 == 0:
-            print(f"Epoch {epoch:03d} - Loss: {loss:.4f}")
-        test_metrics, epoch_test_accuracies = test_mini_batch(model, test_loader)
+        loss, accuracy = train_mini_batch(model, train_loader, optimizer)
+        test_metrics = test_mini_batch(model, test_loader)
     else:
-        print('Full-batch Training started!!!!!!')
-        loss, epoch_train_losses = train_full_batch(model, optimizer, data, train_mask)
-        if epoch % 5 == 0:
-            print(f"Full_batch {epoch:03d} - Loss: {loss:.4f}")
-        test_metrics, epoch_test_accuracies = test_full_batch(model, data, test_mask)
+        loss, accuracy = train_full_batch(model, optimizer, data, train_mask)
+        test_metrics = test_full_batch(model, data, test_mask)
 
-plt.figure(figsize=(12, 5))
+    # Collect loss and accuracy for plotting
+    train_losses.append(loss)
+    train_accuracies.append(accuracy)
+    test_losses.append(test_metrics["loss"])
+    test_accuracies.append(test_metrics["accuracy"])
 
-# Plot Loss Curve
-plt.subplot(1, 2, 1)
-plt.plot(range(1, len(train_losses) + 1), train_losses, label="Train Loss", color="red")
-plt.xlabel("Epochs")
-plt.ylabel("Loss")
-plt.title("GNN Training Loss Curve")
-plt.legend()
-
-# Plot Accuracy Curve
-plt.subplot(1, 2, 2)
-plt.plot(range(1, len(test_accuracies) + 1), test_accuracies, label="Test Accuracy", color="blue")
-plt.xlabel("Epochs")
-plt.ylabel("Accuracy")
-plt.title("GNN Test Accuracy Curve")
-plt.legend()
-
-plt.show()
+    if epoch % 5 == 0:
+        print(f"Epoch {epoch:03d} - Train Loss: {loss:.4f}, Test Loss: {test_metrics['loss']:.4f}")
+        print(f"Epoch {epoch:03d} - Train Accuracy: {accuracy:.4f}, Test Accuracy: {test_metrics['accuracy']:.4f}")
 
 print(f"Test Performance Metrics - Recall: {test_metrics['recall']:.4f}")
 print(f"Test Performance Metrics - Precision: {test_metrics['precision']:.4f}")
@@ -153,4 +139,24 @@ print(f"Test Performance Metrics - F1-score: {test_metrics['f1_score']:.4f}")
 print(f"Test Performance Metrics - Accuracy: {test_metrics['accuracy']:.4f}")
 print(f"Test Performance Metrics - AUC: {test_metrics['auc']:.4f}")
 
+plt.figure(figsize=(12, 5))
 
+# Subplot 1: Train Loss vs Test Loss
+plt.subplot(1, 2, 1)
+plt.plot(range(1, len(train_losses) + 1), train_losses, label="Train Loss", color="red")
+plt.plot(range(1, len(test_losses) + 1), test_losses, label="Test Loss", color="blue")
+plt.xlabel("Epochs")
+plt.ylabel("Loss")
+plt.title("GNN Train vs Test Loss")
+plt.legend()
+
+# Subplot 2: Train Accuracy vs Test Accuracy
+plt.subplot(1, 2, 2)
+plt.plot(range(1, len(train_accuracies) + 1), train_accuracies, label="Train Accuracy", color="green")
+plt.plot(range(1, len(test_accuracies) + 1), test_accuracies, label="Test Accuracy", color="orange")
+plt.xlabel("Epochs")
+plt.ylabel("Accuracy")
+plt.title("GNN Train vs Test Accuracy")
+plt.legend()
+
+plt.show()
