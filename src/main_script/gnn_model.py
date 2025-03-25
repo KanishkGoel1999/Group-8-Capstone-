@@ -9,7 +9,8 @@ import os
 import yaml
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from components.metric import Metrics
-from components.model import Models
+from components.model_gat import Models
+# from components.model import Models
 from components.constants import EDGE_TYPES
 from components.utils import get_edge_index_dict, train_mini_batch, train_full_batch, test_mini_batch, test_full_batch
 
@@ -22,7 +23,7 @@ test_accuracies = []
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-data = torch.load("hetero_graph.pt")
+data = torch.load("hetero_graph.pt", weights_only=False)
 
 # Load YAML configuration
 config_path = os.path.join(os.path.dirname(__file__), "..", "components", "config.yaml")
@@ -30,7 +31,7 @@ with open(config_path, "r") as file:
     config = yaml.safe_load(file)
 
 # Load GNN hyperparameters from config
-gnn_config = config["gnn"]["sets"][1]  # change index for different configurations
+gnn_config = config["gnn"]["sets"][2]  # change index for different configurations
 num_epochs = gnn_config["num_epochs"]
 batch_size = gnn_config["batch_size"]
 num_neighbors = gnn_config["num_neighbors"]
