@@ -137,7 +137,8 @@ def train_mini_batch(model, train_loader, optimizer):
     
 #     return loss.item()
 
-def train_full_batch(model, optimizer, data, train_mask):
+def train_full_batch(model, optimizer, data, train_mask, class_weights, device):
+    criterion = torch.nn.CrossEntropyLoss(weight=class_weights).to(device)
     model.train()
     optimizer.zero_grad()
     
@@ -150,7 +151,7 @@ def train_full_batch(model, optimizer, data, train_mask):
     edge_index_dict = get_edge_index_dict(data)
     out = model(x_dict, edge_index_dict)
 
-    loss = F.cross_entropy(out[train_mask], data['user'].y[train_mask])
+    loss = criterion(out[train_mask], data['user'].y[train_mask])
     loss.backward()
     optimizer.step()
 
@@ -245,7 +246,8 @@ def test_mini_batch(model, test_loader):
 #     return metrics
 
 @torch.no_grad()
-def test_full_batch(model, data, test_mask):
+def test_full_batch(model, data, test_mask, class_weights, device):
+    criterion = torch.nn.CrossEntropyLoss(weight=class_weights).to(device)
     model.eval()
 
     x_dict = {
@@ -257,7 +259,7 @@ def test_full_batch(model, data, test_mask):
     edge_index_dict = get_edge_index_dict(data)
     out = model(x_dict, edge_index_dict)
 
-    loss = F.cross_entropy(out[test_mask], data['user'].y[test_mask])  # Compute test loss
+    loss = criterion(out[test_mask], data['user'].y[test_mask])  # Compute test loss
     preds = out[test_mask].argmax(dim=-1)
     labels = data['user'].y[test_mask]
 

@@ -36,6 +36,9 @@ num_epochs = gnn_config["num_epochs"]
 batch_size = gnn_config["batch_size"]
 num_neighbors = gnn_config["num_neighbors"]
 print(batch_size)
+
+class_weights = torch.tensor([1.0, 5.0]).to(device)
+
 # Apply RandomNodeSplit transformation
 transform = RandomNodeSplit(split="train_rest", num_val=0.1, num_test=0.1)
 data = transform(data)
@@ -118,11 +121,11 @@ if batch_size != 0: # mini-batch or full-batch condition
 
 for epoch in range(1, num_epochs + 1):
     if batch_size != 0:
-        loss, accuracy = train_mini_batch(model, train_loader, optimizer)
-        test_metrics = test_mini_batch(model, test_loader)
+        loss, accuracy = train_mini_batch(model, train_loader, optimizer, class_weights, device)
+        test_metrics = test_mini_batch(model, test_loader, class_weights, device)
     else:
-        loss, accuracy = train_full_batch(model, optimizer, data, train_mask)
-        test_metrics = test_full_batch(model, data, test_mask)
+        loss, accuracy = train_full_batch(model, optimizer, data, train_mask, class_weights, device)
+        test_metrics = test_full_batch(model, data, test_mask, class_weights, device)
 
     # Collect loss and accuracy for plotting
     train_losses.append(loss)
