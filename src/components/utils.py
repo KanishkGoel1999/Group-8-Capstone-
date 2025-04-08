@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import random
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import recall_score, precision_score, f1_score, accuracy_score, confusion_matrix
 import torch.nn.functional as F
@@ -137,8 +138,8 @@ def train_mini_batch(model, train_loader, optimizer):
     
 #     return loss.item()
 
-def train_full_batch(model, optimizer, data, train_mask, class_weights, device):
-    criterion = torch.nn.CrossEntropyLoss(weight=class_weights).to(device)
+def train_full_batch(model, optimizer, data, train_mask):
+    # criterion = torch.nn.CrossEntropyLoss(weight=class_weights).to(device)
     model.train()
     optimizer.zero_grad()
     
@@ -151,7 +152,7 @@ def train_full_batch(model, optimizer, data, train_mask, class_weights, device):
     edge_index_dict = get_edge_index_dict(data)
     out = model(x_dict, edge_index_dict)
 
-    loss = criterion(out[train_mask], data['user'].y[train_mask])
+    loss = F.cross_entropy(out[train_mask], data['user'].y[train_mask])
     loss.backward()
     optimizer.step()
 
@@ -246,8 +247,8 @@ def test_mini_batch(model, test_loader):
 #     return metrics
 
 @torch.no_grad()
-def test_full_batch(model, data, test_mask, class_weights, device):
-    criterion = torch.nn.CrossEntropyLoss(weight=class_weights).to(device)
+def test_full_batch(model, data, test_mask):
+    # criterion = torch.nn.CrossEntropyLoss(weight=class_weights).to(device)
     model.eval()
 
     x_dict = {
@@ -259,7 +260,7 @@ def test_full_batch(model, data, test_mask, class_weights, device):
     edge_index_dict = get_edge_index_dict(data)
     out = model(x_dict, edge_index_dict)
 
-    loss = criterion(out[test_mask], data['user'].y[test_mask])  # Compute test loss
+    loss = F.cross_entropy(out[test_mask], data['user'].y[test_mask])  # Compute test loss
     preds = out[test_mask].argmax(dim=-1)
     labels = data['user'].y[test_mask]
 
@@ -270,4 +271,15 @@ def test_full_batch(model, data, test_mask, class_weights, device):
     metrics["loss"] = loss.item()  # Add loss to metrics
 
     return metrics
+
+
+def set_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+
 

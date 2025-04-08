@@ -1,6 +1,7 @@
 # Configuration file for hyperparameter tuning
 
 gnn:
+  seed: 42
   sets:
     - hidden_channels: 32
       out_channels: 2
@@ -13,27 +14,27 @@ gnn:
     - hidden_channels: 64
       out_channels: 2
       aggregation: "mean"
-      learning_rate: 0.005
-      weight_decay: 1e-4
-      num_epochs: 100
-      batch_size: 64
-      num_neighbors: [10, 10]
-    - hidden_channels: 32
-      out_channels: 2
-      aggregation: "sum"
-      learning_rate: 0.005
+      learning_rate: 0.01
       weight_decay: 1e-4
       num_epochs: 50
-      batch_size: 0 # full-batch training
-      num_neighbors: []
-    - hidden_channels: 64
-      out_channels: 2
-      aggregation: "lstm"
-      learning_rate: 0.005
-      weight_decay: 1e-4
-      num_epochs: 100
-      batch_size: 0 # full-batch training
-      num_neighbors: []
+      batch_size: 64
+      num_neighbors: [10, 10]
+    # - hidden_channels: 32
+    #   out_channels: 2
+    #   aggregation: "sum"
+    #   learning_rate: 0.005
+    #   weight_decay: 1e-4
+    #   num_epochs: 50
+    #   batch_size: 0 # full-batch training
+    #   num_neighbors: []
+    # - hidden_channels: 64
+    #   out_channels: 2
+    #   aggregation: "lstm"
+    #   learning_rate: 0.005
+    #   weight_decay: 1e-4
+    #   num_epochs: 100
+    #   batch_size: 0 # full-batch training
+    #   num_neighbors: []
 
 xgboost:
   sets:

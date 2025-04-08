@@ -3,16 +3,16 @@ import torch
 import torch.nn.functional as F
 from torch_geometric.loader import NeighborLoader
 from torch_geometric.transforms import RandomNodeSplit
-
+from torch.utils.data import WeightedRandomSampler
 import sys
 import os
 import yaml
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from components.metric import Metrics
-from components.model_gat import Models
-# from components.model import Models
+# from components.model_gat import Models
+from components.model import Models
 from components.constants import EDGE_TYPES
-from components.utils import get_edge_index_dict, train_mini_batch, train_full_batch, test_mini_batch, test_full_batch
+from components.utils import get_edge_index_dict, train_mini_batch, train_full_batch, test_mini_batch, test_full_batch, set_seed
 
 import matplotlib.pyplot as plt
 
@@ -31,13 +31,15 @@ with open(config_path, "r") as file:
     config = yaml.safe_load(file)
 
 # Load GNN hyperparameters from config
-gnn_config = config["gnn"]["sets"][2]  # change index for different configurations
+gnn_config = config["gnn"]["sets"][1]  # change index for different configurations
 num_epochs = gnn_config["num_epochs"]
 batch_size = gnn_config["batch_size"]
 num_neighbors = gnn_config["num_neighbors"]
+# seed = config["gnn"].get("seed", 42)
+# set_seed(seed)
 print(batch_size)
 
-class_weights = torch.tensor([1.0, 5.0]).to(device)
+# class_weights = torch.tensor([1.0, 5.0]).to(device)
 
 # Apply RandomNodeSplit transformation
 transform = RandomNodeSplit(split="train_rest", num_val=0.1, num_test=0.1)
@@ -100,6 +102,16 @@ optimizer = torch.optim.Adam(
 
 train_mask = data['user'].train_mask
 test_mask = data['user'].test_mask
+
+# Compute class distribution in training set
+train_labels = data['user'].y[train_mask]
+class_sample_count = torch.bincount(train_labels)
+class_weights = 1.0 / class_sample_count.float()
+sample_weights = class_weights[train_labels]
+
+# Create the sampler
+sampler = WeightedRandomSampler(weights=sample_weights, num_samples=train_mask.sum().item(), replacement=True)
+
 if batch_size != 0: # mini-batch or full-batch condition
     print('Enteredddddddddddddd')
     # Create DataLoaders
@@ -108,7 +120,8 @@ if batch_size != 0: # mini-batch or full-batch condition
         num_neighbors=num_neighbors,
         input_nodes=('user', train_mask),
         batch_size=batch_size,
-        shuffle=True,
+        sampler=sampler,
+        # shuffle=True
     )
 
     test_loader = NeighborLoader(
@@ -116,16 +129,18 @@ if batch_size != 0: # mini-batch or full-batch condition
         num_neighbors=num_neighbors,
         input_nodes=('user', test_mask),
         batch_size=batch_size,
-        shuffle=False,
+        shuffle=False
     )
-
+# TODO: RandomSampler with class weights (search in PyG)
+# Use DataLoaders from now on.
 for epoch in range(1, num_epochs + 1):
     if batch_size != 0:
-        loss, accuracy = train_mini_batch(model, train_loader, optimizer, class_weights, device)
-        test_metrics = test_mini_batch(model, test_loader, class_weights, device)
+        print('Mini batch....................................................')
+        loss, accuracy = train_mini_batch(model, train_loader, optimizer)
+        test_metrics = test_mini_batch(model, test_loader)
     else:
-        loss, accuracy = train_full_batch(model, optimizer, data, train_mask, class_weights, device)
-        test_metrics = test_full_batch(model, data, test_mask, class_weights, device)
+        loss, accuracy = train_full_batch(model, optimizer, data, train_mask)
+        test_metrics = test_full_batch(model, data, test_mask)
 
     # Collect loss and accuracy for plotting
     train_losses.append(loss)

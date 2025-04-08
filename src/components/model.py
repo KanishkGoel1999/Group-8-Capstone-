@@ -1,4 +1,4 @@
-# from xgboost import XGBClassifier
+from xgboost import XGBClassifier
 import torch
 import torch.nn.functional as F
 from torch_geometric.nn import HeteroConv, SAGEConv
@@ -16,7 +16,7 @@ config_path = os.path.join(os.path.dirname(__file__), "config.yaml")
 # Load the YAML configuration
 with open(config_path, "r") as file:
     config = yaml.safe_load(file)
-gnn_config = config["gnn"]["sets"][2]  # change index for different configurations
+gnn_config = config["gnn"]["sets"][1]  # change index for different configurations
 xgb_config = config["xgboost"]["sets"][0]  # change index for different configurations
 
 class Models:
@@ -77,17 +77,17 @@ class Models:
                     EDGE_TYPES['SELF_LOOP']: SAGEConv(hidden_channels, hidden_channels),
                 }, aggr=gnn_config['aggregation'])
 
-                self.conv3 = HeteroConv({
-                    EDGE_TYPES['ASKS']: SAGEConv(hidden_channels, hidden_channels),
-                    EDGE_TYPES['REV_ASKS']: SAGEConv(hidden_channels, hidden_channels),
-                    EDGE_TYPES['HAS']: SAGEConv(hidden_channels, hidden_channels),
-                    EDGE_TYPES['REV_HAS']: SAGEConv(hidden_channels, hidden_channels),
-                    EDGE_TYPES['ANSWERS']: SAGEConv(hidden_channels, hidden_channels),
-                    EDGE_TYPES['REV_ANSWERS']: SAGEConv(hidden_channels, hidden_channels),
-                    EDGE_TYPES['ACCEPTED_ANSWER']: SAGEConv(hidden_channels, hidden_channels),
-                    EDGE_TYPES['REV_ACCEPTED']: SAGEConv(hidden_channels, hidden_channels),
-                    EDGE_TYPES['SELF_LOOP']: SAGEConv(hidden_channels, hidden_channels),
-                }, aggr=gnn_config['aggregation'])
+                # self.conv3 = HeteroConv({
+                #     EDGE_TYPES['ASKS']: SAGEConv(hidden_channels, hidden_channels),
+                #     EDGE_TYPES['REV_ASKS']: SAGEConv(hidden_channels, hidden_channels),
+                #     EDGE_TYPES['HAS']: SAGEConv(hidden_channels, hidden_channels),
+                #     EDGE_TYPES['REV_HAS']: SAGEConv(hidden_channels, hidden_channels),
+                #     EDGE_TYPES['ANSWERS']: SAGEConv(hidden_channels, hidden_channels),
+                #     EDGE_TYPES['REV_ANSWERS']: SAGEConv(hidden_channels, hidden_channels),
+                #     EDGE_TYPES['ACCEPTED_ANSWER']: SAGEConv(hidden_channels, hidden_channels),
+                #     EDGE_TYPES['REV_ACCEPTED']: SAGEConv(hidden_channels, hidden_channels),
+                #     EDGE_TYPES['SELF_LOOP']: SAGEConv(hidden_channels, hidden_channels),
+                # }, aggr=gnn_config['aggregation'])
 
                 self.user_lin = torch.nn.Linear(hidden_channels, out_channels)
 
@@ -100,10 +100,10 @@ class Models:
                 x_dict = self.conv2(x_dict, edge_index_dict)
                 for node_type in x_dict:
                     x_dict[node_type] = F.relu(x_dict[node_type])
-                # Apply third conv layer.
-                x_dict = self.conv3(x_dict, edge_index_dict)
-                for node_type in x_dict:
-                    x_dict[node_type] = F.relu(x_dict[node_type])
+                # # Apply third conv layer.
+                # x_dict = self.conv3(x_dict, edge_index_dict)
+                # for node_type in x_dict:
+                #     x_dict[node_type] = F.relu(x_dict[node_type])
                 # Classify only the user nodes.
                 out_user = self.user_lin(x_dict['user'])
                 return out_user
