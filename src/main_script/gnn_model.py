@@ -1,9 +1,9 @@
 # gnn_script.py
 import torch
 import torch.nn.functional as F
-from torch_geometric.loader import NeighborLoader
+from torch_geometric.loader import NeighborLoader, ImbalancedSampler
 from torch_geometric.transforms import RandomNodeSplit
-from torch.utils.data import WeightedRandomSampler
+# from torch.utils.data import WeightedRandomSampler
 import sys
 import os
 import yaml
@@ -103,26 +103,71 @@ optimizer = torch.optim.Adam(
 train_mask = data['user'].train_mask
 test_mask = data['user'].test_mask
 
-# Compute class distribution in training set
-train_labels = data['user'].y[train_mask]
-class_sample_count = torch.bincount(train_labels)
-class_weights = 1.0 / class_sample_count.float()
-sample_weights = class_weights[train_labels]
+def stratified_input_batches(data, node_type='user', mask_key='train_mask', label_key='y', batch_size=64):
+    torch.manual_seed(42)
+    labels = data[node_type][label_key]
+    mask = data[node_type][mask_key]
+    node_indices = torch.arange(data[node_type].num_nodes)[mask]
 
-# Create the sampler
-sampler = WeightedRandomSampler(weights=sample_weights, num_samples=train_mask.sum().item(), replacement=True)
+    class_indices = {}
+    for class_id in labels[node_indices].unique():
+        cls = int(class_id)
+        idx = node_indices[labels[node_indices] == cls]
+        class_indices[cls] = idx[torch.randperm(len(idx))]
+    
+    num_classes = len(class_indices)
+    samples_per_class = batch_size // num_classes
+    min_batches = min(len(idxs) // samples_per_class for idxs in class_indices.values())
+
+    batches = []
+    for i in range(min_batches):
+        batch = torch.cat([
+            class_indices[cls][i * samples_per_class: (i + 1) * samples_per_class]
+            for cls in class_indices
+        ])
+        batches.append(batch)
+    print('Batches:', len(batches))
+    return batches
+
+
+# Get balanced training input nodes for 'user' type
+# input_nodes = get_class_balanced_input_nodes(data, node_type='user', mask_key='train_mask', seed=42)
+
+# # Compute class distribution in training set
+# train_labels = data['user'].y[train_mask]
+# class_sample_count = torch.bincount(train_labels)
+# class_weights = 1.0 / class_sample_count.float()
+# sample_weights = class_weights[train_labels]
+
+# # Create the sampler
+# sampler = WeightedRandomSampler(weights=sample_weights, num_samples=train_mask.sum().item(), replacement=True)
+
+# sampler = ImbalancedSampler(data, input_nodes=('user', train_mask))
 
 if batch_size != 0: # mini-batch or full-batch condition
     print('Enteredddddddddddddd')
+    train_input_batches = stratified_input_batches(data, batch_size=batch_size)
+
+    train_loaders = [
+        NeighborLoader(
+            data,
+            num_neighbors=num_neighbors,
+            input_nodes=('user', batch),
+            batch_size=batch_size,
+            shuffle=False,
+        )
+        for batch in train_input_batches
+    ]
+
     # Create DataLoaders
-    train_loader = NeighborLoader(
-        data,
-        num_neighbors=num_neighbors,
-        input_nodes=('user', train_mask),
-        batch_size=batch_size,
-        sampler=sampler,
-        # shuffle=True
-    )
+    # train_loader = NeighborLoader(
+    #     data,
+    #     num_neighbors=num_neighbors,
+    #     input_nodes=('user', input_nodes),
+    #     batch_size=batch_size,
+    #     # sampler=sampler,
+    #     shuffle=False
+    # )
 
     test_loader = NeighborLoader(
         data,
@@ -131,26 +176,55 @@ if batch_size != 0: # mini-batch or full-batch condition
         batch_size=batch_size,
         shuffle=False
     )
-# TODO: RandomSampler with class weights (search in PyG)
-# Use DataLoaders from now on.
-for epoch in range(1, num_epochs + 1):
-    if batch_size != 0:
-        print('Mini batch....................................................')
-        loss, accuracy = train_mini_batch(model, train_loader, optimizer)
-        test_metrics = test_mini_batch(model, test_loader)
-    else:
-        loss, accuracy = train_full_batch(model, optimizer, data, train_mask)
-        test_metrics = test_full_batch(model, data, test_mask)
 
-    # Collect loss and accuracy for plotting
-    train_losses.append(loss)
-    train_accuracies.append(accuracy)
+for epoch in range(1, num_epochs + 1):
+    model.train()
+    total_loss = 0
+    total_correct = 0
+    total_samples = 0
+
+    for loader in train_loaders:
+        loss, acc = train_mini_batch(model, loader, optimizer)
+        total_loss += loss
+        total_correct += acc * batch_size
+        total_samples += batch_size
+
+    epoch_loss = total_loss / len(train_loaders)
+    epoch_acc = total_correct / total_samples
+
+    test_metrics = test_mini_batch(model, test_loader)
+
+    train_losses.append(epoch_loss)
+    train_accuracies.append(epoch_acc)
     test_losses.append(test_metrics["loss"])
     test_accuracies.append(test_metrics["accuracy"])
 
     if epoch % 5 == 0:
-        print(f"Epoch {epoch:03d} - Train Loss: {loss:.4f}, Test Loss: {test_metrics['loss']:.4f}")
-        print(f"Epoch {epoch:03d} - Train Accuracy: {accuracy:.4f}, Test Accuracy: {test_metrics['accuracy']:.4f}")
+        print(f"Epoch {epoch:03d} - Train Loss: {epoch_loss:.4f}, Test Loss: {test_metrics['loss']:.4f}")
+        print(f"Epoch {epoch:03d} - Train Accuracy: {epoch_acc:.4f}, Test Accuracy: {test_metrics['accuracy']:.4f}")
+
+# TODO: RandomSampler with class weights (search in PyG)
+# Use DataLoaders from now on.
+# for epoch in range(1, num_epochs + 1):
+#     if batch_size != 0:
+#         print('Mini batch....................................................')
+#         loss, accuracy = train_mini_batch(model, train_loader, optimizer)
+#         test_metrics = test_mini_batch(model, test_loader)
+#     else:
+#         loss, accuracy = train_full_batch(model, optimizer, data, train_mask)
+#         test_metrics = test_full_batch(model, data, test_mask)
+
+#     # Collect loss and accuracy for plotting
+#     train_losses.append(loss)
+#     train_accuracies.append(accuracy)
+#     test_losses.append(test_metrics["loss"])
+#     test_accuracies.append(test_metrics["accuracy"])
+
+#     if epoch % 5 == 0:
+#         print(f"Epoch {epoch:03d} - Train Loss: {loss:.4f}, Test Loss: {test_metrics['loss']:.4f}")
+#         print(f"Epoch {epoch:03d} - Train Accuracy: {accuracy:.4f}, Test Accuracy: {test_metrics['accuracy']:.4f}")
+
+
 
 print(f"Test Performance Metrics - Recall: {test_metrics['recall']:.4f}")
 print(f"Test Performance Metrics - Precision: {test_metrics['precision']:.4f}")
