@@ -1,23 +1,25 @@
 # Configuration file
 
 data:
-  data_path:
-  model_path:
+  train_data_path1: 'processed_train.csv'
+  test_data_path1: 'processed_test.csv'
+  data_path2: 'synthetic_fraud_data.csv'
+  model_path: ''
   target:
   m_name: "best_pyg_model_Cat.pth"
 
 gnn:
-  sets:
-    - hidden_size: 32
-      out_size: 2
-      n_layers: 4
-      target_node: "transaction"
-      aggregation: "sum"
-      learning_rate: 0.0001
-      weight_decay: 1e-5
-      num_epochs: 100
-      batch_size: 128
-      patience: 5
-      num_neighbors: [10, 10] # Neighbor sampling per layer
+  hidden_size: 32
+  out_size: 2
+  n_layers: 4
+  target_node: "transaction"
+  aggregation: "sum"
+  learning_rate: 0.0001
+  weight_decay: 5e-4
+  num_epochs: 100
+  batch_size: 128
+  patience: 10
+  min_epochs: 60
+  num_neighbors: [5, 5] # Neighbor sampling per layer
 
 xgboost:
