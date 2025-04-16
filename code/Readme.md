@@ -34,12 +34,8 @@ The directory is structured as follows:
 The code directory is organized into the following subdirectories:
 
 - `component`: Contains utility files and helper functions for different model types.
-  - `classical_machine_learning`: Utility functions for classical machine learning models.
+  - `classical_machine_learning_models`: Utility functions for classical machine learning models.
     - `utils.py`: Utility functions for classical machine learning.
-  - `deep_learning`: Utility files for deep learning models.
-    - `dataloader.py`: Data loading and preprocessing functions for deep learning models.
-    - `models.py`: Deep learning model architectures.
-    - `utils.py`: Utility functions for deep learning.
   - `gnn`: Utility files for Graph Neural Network (GNN) models.
     - `model.py`: GNN model architecture.
     - `utils.py`: Utility functions for GNN.
