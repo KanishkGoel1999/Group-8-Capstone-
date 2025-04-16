@@ -7,40 +7,27 @@ The directory is structured as follows:
 .
 ├── code
 │   ├── component
-│   │   ├── classical_machine_learning
-│   │   │   └── utils.py
-│   │   ├── deep_learning
-│   │   │   ├── dataloader.py
-│   │   │   ├── models.py
+│   │   ├── classical_machine_learning_models
 │   │   │   └── utils.py
 │   │   ├── gnn
-│   │   │   ├── model.py
+│   │   │   ├── model_dgl.py
+│   │   │   ├── model_pytorch.py
 │   │   │   └── utils.py
+│   │   ├── config.yaml
 │   │   └── preprocess.py
 │   └── main_code
-│       ├── classical_machine_learning
+│       ├── classical_machine_learning_models
 │       │   ├── models
-│       │   ├── CatBoost_train.py
-│       │   ├── Inference.py
-│       │   ├── LightGBM_train.py
-│       │   ├── Logistic_train.py
-│       │   ├── Random_Forest_train.py
-│       │   ├── SVM_train.py
+│       │   ├── train_ML.py
+│       │   ├── test_ML.py
 │       │   └── Xgboost_train.py
-│       ├── deep_learning
-│       │   ├── models
-│       │   ├── plots
-│       │   ├── CNN_LSTM_Test.py
-│       │   ├── CNN_LSTM_Train.py
-│       │   ├── CNN_Test.py
-│       │   ├── CNN_Train.py
-│       │   ├── Inference.py
-│       │   ├── LSTM_Test.py
-│       │   └── LSTM_Train.py
 │       └── gnn
-│           ├── models
-│           ├── plots
-│           ├── GNN_Train.py
+│           ├── DGL
+│           │   ├── test_dgl.py
+│           │   └── train_dgl.py
+│           ├── PyG
+│           │   ├── test_pyg.py
+│           │   └── train_pyg.py
 │           └── Inference.py
 ```
 
