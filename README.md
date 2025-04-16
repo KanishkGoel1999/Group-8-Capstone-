@@ -1,76 +1,60 @@
+# 🚧 Project In Progress: Identifying Influential Users Using Classical Models and Graph Neural Networks
 
-# Capstone Proposal Group 8
-## Graph Neural Network (PyG)
-### Proposed by: Dr. Amir Jafari
-#### Email: ajafari@gwu.edu
-#### Advisor: Amir Jafari
-#### The George Washington University, Washington DC  
-#### Data Science Program
+> ⚠️ This project is currently under active development. Final model comparisons, visualizations, and documentation are subject to change.
 
+---
 
-## 1 Objective:  
- 
-            PyG (PyTorch Geometric) is a library built upon PyTorch to easily write and train Graph Neural Networks 
-            (GNNs) for a wide range of applications related to structured data. It consists of various methods for deep
-            learning on graphs and other irregular structures, also known as geometric deep learning (https://pyg.org/blogs-and-tutorials). 
-            The goal of this project is to use PyG package on synthetic data and then work on a real time data (financial 
-            and social network domain). We plan to cover four types: Node Classification, Link Prediction, Graph Prediction, 
-            and Graph Generation.  Finally,  we will find a set of data that fits the application and compare it with 
-            deep learning methods and develop a comparative study of the GNN and Deep Learning techniques.
-            
+## 🧠 Objective
 
-![Figure 1: Example figure](2025_Spring_2.png)
-*Figure 1: Caption*
+To evaluate the effectiveness of graph-based learning (GNNs) over traditional tabular models (XGBoost) in classifying users based on their influence or activity, leveraging structured and relational information from Q&A and discussion forums.
 
-## 2 Dataset:  
+## 📊 Datasets
 
-            The publicly available data for each application needs to be find in Kaggle Dataset or any source of data. We will use synthetic data that fits GNN. We are planning to get a real time dataset for comparison.
-            
+- **Stack Overflow**: Extracted using the Stack Exchange API. Includes users, questions, and answers.
+- **AskReddit (Reddit)**: Sourced from Kaggle’s “A Month of AskReddit” dataset.
 
-## 3 Rationale:  
+Each dataset is transformed into:
+- A tabular format for XGBoost.
+- A heterogeneous graph format for GNNs.
 
-            This project is going to help machine learning and deeplearning researches to understand GNN by comparing it
-            with other available methods. 
+## 🔍 Key Components
 
-            
+- **Data Preprocessing**: Cleaning, labeling, and feature extraction.
+- **Graph Construction**: Building heterogeneous graphs with user-question-answer (Stack Overflow) and user-post-comment (Reddit) relationships.
+- **Modeling**:
+  - XGBoost for baseline performance.
+  - GNN using GraphSAGE with message passing over multi-typed edges.
+- **Imbalance Handling**: Custom stratified mini-batching technique for class-balanced training.
 
-## 4 Approach:  
+## 📈 Results Summary
 
-            I plan on approaching this capstone through several steps.  
-            
-            1. Design folder structure for the repo GNN.
-            2. Create a basic GNN code (basic code: Data loaders, models)
-            3. Create modular and reusable codes. 
-            4. Work on specific application (any of applications which is mentioned).
-            5. Create a tutorial and slides for the specific GNN.
-            6. Use external dataset and compare results with DL models.
-            7. Write a journal paper.
-            8. Create a documentation for each application with slides, basic codes and final application training code.
-            
+| Dataset        | Model     | F1-Score | Accuracy | AUC   |
+|----------------|-----------|----------|----------|--------|
+| Stack Overflow | XGBoost   | 0.602    | 0.812    | 0.646 |
+| Stack Overflow | GNN       | 0.583    | 0.883    | 0.568 |
+| Reddit         | XGBoost   | 0.680    | 0.813    | 0.895 |
+| Reddit         | GNN       | 0.677    | 0.912    | 0.954 |
 
-## 5 Timeline:  
+## 🛠️ Technologies Used
 
-            This a rough time line for this project:  
-            
-            - (1 Weeks) Create folder structure.  
-            - (3 Weeks) Basic GNN code and documentation 
-            - (1 Weeks) Modular reusable class and functions.  
-            - (1 Weeks) Pick and application and do a literature review.
-            - (2 Weeks) Tutorial and slides for specific application
-            - (3 Weeks) Find external dataset and train the network (comparative study)
-            - (2 Weeks) Expand the GNN through different set of data and show the power of GNN.
-            - (2 Weeks) Write a paper.
-              
-            
+- Python, PyTorch Geometric
+- XGBoost
+- NetworkX / DGL for preprocessing
+- LaTeX for documentation
 
-## 6 Possible Issues:  
+## 📄 Output
 
-            The challenge is understanding the GNN in great details. Solve realworld problem and create through examples
-            that it shows the power of GNN. 
-            
+The final report (PDF) includes:
+- Dataset statistics
+- Graph types and visual examples
+- Model architectures
+- Performance evaluation
+- Discussion and conclusion
 
+## 👥 Authors
 
-## Contact
-- Author: Amir Jafari
-- Email: [ajafari@gmail.com](Eamil)
-- GitHub: [https://github.com/amir-jafari/Capstone](Git Hub rep)
+- Harshavardana Reddy Kolan  
+- Shikha Kumari  
+- Amir Hossein Jafari
+
+---
