@@ -1,0 +1,23 @@
+# Configuration file
+
+data:
+  data_path:
+  model_path:
+  target:
+  m_name: "best_pyg_model_Cat.pth"
+
+gnn:
+  sets:
+    - hidden_size: 32
+      out_size: 2
+      n_layers: 4
+      target_node: "transaction"
+      aggregation: "sum"
+      learning_rate: 0.0001
+      weight_decay: 1e-5
+      num_epochs: 100
+      batch_size: 128
+      patience: 5
+      num_neighbors: [10, 10] # Neighbor sampling per layer
+
+xgboost:
