@@ -8,7 +8,7 @@ import yaml
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from components.metric import Metrics
 from components.model import Models
-from components.constants import EDGE_TYPES, DATASET_TYPE_1
+from components.constants import EDGE_TYPES, DATASET_TYPE_1, EDGE_TYPES_DICT
 from components.utils import get_edge_index_dict, train_mini_batch, train_full_batch, test_mini_batch, test_full_batch, set_seed, get_in_channels, parse_args, read_yaml
 import matplotlib.pyplot as plt
 import argparse
@@ -20,19 +20,6 @@ def parse_args():
     parser.add_argument("config_index", type=int, help="Index of the GNN configuration set from YAML")
     return parser.parse_args()
 
-# def read_yaml(set_num):
-#     # Load YAML configuration
-#     config_path = os.path.join(os.path.dirname(__file__), "..", "components", "config.yaml")
-#     with open(config_path, "r") as file:
-#         config = yaml.safe_load(file)
-
-#     # Load GNN hyperparameters from config
-#     gnn_config = config["gnn"]["sets"][set_num]  # change index for different configurations
-#     return gnn_config
-    # num_epochs = gnn_config["num_epochs"]
-    # batch_size = gnn_config["batch_size"]
-    # num_neighbors = gnn_config["num_neighbors"]
-
 def split_data(gnn_config, dataset):
     # Apply RandomNodeSplit transformation
     transform = RandomNodeSplit(split=gnn_config["split"], num_val=0.1, num_test=0.1)
@@ -41,38 +28,91 @@ def split_data(gnn_config, dataset):
 
     return data
 
-def add_reverse_and_self_loop_edges(data):
+def add_reverse_and_self_loop_edges(data, dataset_name):
+    # edge_types = EDGE_TYPES[dataset_name]
     # Reverse for user -> question (asks)
-    if EDGE_TYPES['ASKS'] in data.edge_types:
-        edge_index = data[EDGE_TYPES['ASKS']].edge_index
-        data[EDGE_TYPES['REV_ASKS']].edge_index = edge_index.flip(0)
+    if EDGE_TYPES_DICT['ASKS'] in data.edge_types:
+        edge_index = data[EDGE_TYPES_DICT['ASKS']].edge_index
+        data[EDGE_TYPES_DICT['REV_ASKS']].edge_index = edge_index.flip(0)
 
     # Reverse for user -> answer (answers)
-    if EDGE_TYPES['ANSWERS'] in data.edge_types:
-        edge_index = data[EDGE_TYPES['ANSWERS']].edge_index
-        data[EDGE_TYPES['REV_ANSWERS']].edge_index = edge_index.flip(0)
+    if EDGE_TYPES_DICT['ANSWERS'] in data.edge_types:
+        edge_index = data[EDGE_TYPES_DICT['ANSWERS']].edge_index
+        data[EDGE_TYPES_DICT['REV_ANSWERS']].edge_index = edge_index.flip(0)
 
     # Reverse for question -> answer (has)
-    if EDGE_TYPES['HAS'] in data.edge_types:
-        edge_index = data[EDGE_TYPES['HAS']].edge_index
-        data[EDGE_TYPES['REV_HAS']].edge_index = edge_index.flip(0)
+    if EDGE_TYPES_DICT['HAS'] in data.edge_types:
+        edge_index = data[EDGE_TYPES_DICT['HAS']].edge_index
+        data[EDGE_TYPES_DICT['REV_HAS']].edge_index = edge_index.flip(0)
 
     # Reverse for question -> answer (accepted_answer)
-    if EDGE_TYPES['ACCEPTED_ANSWER'] in data.edge_types:
-        edge_index = data[EDGE_TYPES['ACCEPTED_ANSWER']].edge_index
-        data[EDGE_TYPES['REV_ACCEPTED']].edge_index = edge_index.flip(0)
+    if EDGE_TYPES_DICT['ACCEPTED_ANSWER'] in data.edge_types:
+        edge_index = data[EDGE_TYPES_DICT['ACCEPTED_ANSWER']].edge_index
+        data[EDGE_TYPES_DICT['REV_ACCEPTED']].edge_index = edge_index.flip(0)
 
     # Add self-loop for user nodes: ensure each user node receives its own message.
     num_users = data['user'].num_nodes
     row = torch.arange(num_users, dtype=torch.long)
     self_loop_edge = torch.stack([row, row], dim=0)
-    data[EDGE_TYPES['SELF_LOOP']].edge_index = self_loop_edge
+    data[EDGE_TYPES_DICT['SELF_LOOP']].edge_index = self_loop_edge
 
     return data
 
-def initialize_model(in_channels_dict):
+# def add_reverse_and_self_loop_edges(data, dataset_name):
+#     edge_types = EDGE_TYPES[dataset_name]
+
+#     # Add reverse edges
+#     for (src, rel, dst) in edge_types:
+#         if rel.startswith("rev_") or rel == "self_loop":
+#             continue  # Skip if already reverse or self-loop edge
+
+#         rev_rel = f"rev_{rel}"
+#         rev_edge_type = (dst, rev_rel, src)
+
+#         if rev_edge_type not in data.edge_types:
+#             edge_index = data[(src, rel, dst)].edge_index
+#             if edge_index is not None and edge_index.shape[0] == 2:
+#                 data[rev_edge_type].edge_index = edge_index.flip(0).clone()
+
+#     # Add self-loops for each node type
+#     for node_type in data.node_types:
+#         self_loop_edge_type = (node_type, 'self_loop', node_type)
+#         if self_loop_edge_type not in data.edge_types:
+#             num_nodes = data[node_type].num_nodes
+#             row = torch.arange(num_nodes, dtype=torch.long)
+#             edge_index = torch.stack([row, row], dim=0)
+#             data[self_loop_edge_type].edge_index = edge_index.clone()
+
+#     return data
+
+
+
+def add_reverse_edges_reddit(data):
+    # Get a list of all original edge types.
+    original_edge_types = list(data.edge_types)
+    for (src, rel, dst) in original_edge_types:
+        # Define a name for the reverse relation
+        reverse_rel = rel + '__reverse'
+        reverse_type = (dst, reverse_rel, src)
+        # Only add reverse if it doesn't already exist.
+        if reverse_type not in data.edge_types:
+            edge_index = data[src, rel, dst].edge_index
+            # Reverse edge_index (swap sources and targets)
+            reverse_edge_index = edge_index.flip(0)
+            data[dst, reverse_rel, src].edge_index = reverse_edge_index
+
+    # Add self-loops for author nodes.
+    num_authors = data['author'].num_nodes
+    self_loop = torch.arange(num_authors, dtype=torch.long)
+    self_loop_edge_index = torch.stack([self_loop, self_loop], dim=0)
+    data['author', 'self_loop', 'author'].edge_index = self_loop_edge_index
+
+    return data
+
+def initialize_model(dataset_name, in_channels_dict):
     # Initialize GNN model
-    model = Models.get_gnn_model(
+    model = Models.get_hetero_model(
+        dataset_name,
         in_channels_dict,
         hidden_channels=int(gnn_config["hidden_channels"]),
         out_channels=int(gnn_config["out_channels"])
@@ -135,7 +175,7 @@ def loader(batch_size, num_neighbors):
         ]
         return train_loaders
     
-def train(gnn_config, model, optimizer, loader):
+def train(gnn_config, model, optimizer, loader, dataset_name):
     train_losses = []
     train_accuracies = []
     for epoch in range(1, gnn_config['num_epochs'] + 1):
@@ -146,7 +186,7 @@ def train(gnn_config, model, optimizer, loader):
         total_acc = 0
         torch.manual_seed(42)
         for loader in train_loaders:
-            loss, acc = train_mini_batch(model, loader, optimizer)
+            loss, acc = train_mini_batch(model, loader, optimizer, dataset_name)
             total_loss += loss
             total_acc += acc
             # total_auc += auc
@@ -172,22 +212,25 @@ if __name__ == "__main__":
 
     print(f"Dataset selected: {dataset_name}")
     print(f"Config set selected: {config_index}")
-
+    # Determine node type dynamically
+    target_node = "user" if dataset_name == DATASET_TYPE_1 else "author"
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    dataset = torch.load("hetero_graph.pt", weights_only=False)
+    if dataset_name == DATASET_TYPE_1:
+        dataset = torch.load("hetero_graph.pt", weights_only=False)
+    else:
+        dataset = torch.load("reddit_hetero_graph_1.pt", weights_only=False)
     gnn_config = read_yaml(config_index)
     data = split_data(gnn_config, dataset)
-    data = add_reverse_and_self_loop_edges(data)
-    edge_index_dict = get_edge_index_dict(data)
+    data = add_reverse_and_self_loop_edges(data, dataset_name) if dataset_name == DATASET_TYPE_1 else add_reverse_edges_reddit(data)
+    edge_index_dict = get_edge_index_dict(data)   
     in_channels_dict = get_in_channels(dataset_name, data)
-    model = initialize_model(in_channels_dict)
+    model = initialize_model(dataset_name, in_channels_dict)
     optimizer = initialize_optimizer(model, gnn_config)
-    if dataset_name == DATASET_TYPE_1:
-        batches = stratified_input_batches(data, 'user', mask_key='train_mask', label_key='y', batch_size=64)
-    else:
-        batches = stratified_input_batches(data, 'author', mask_key='train_mask', label_key='y', batch_size=64)
+    batches = stratified_input_batches(data, target_node, mask_key='train_mask', label_key='y', batch_size=64)
+    
     train_loaders = loader(gnn_config['batch_size'], gnn_config['num_neighbors'])
-    model, train_losses, train_accuracies = train(gnn_config, model, optimizer, train_loaders)
+    print('----------------------------')
+    model, train_losses, train_accuracies = train(gnn_config, model, optimizer, train_loaders, dataset_name)
     # Save metrics, model, and dataset in model_artifacts/
     artifact_dir = os.path.join(os.path.dirname(__file__), "..", "model_artifacts")
     os.makedirs(artifact_dir, exist_ok=True)

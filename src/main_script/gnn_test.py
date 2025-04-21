@@ -44,13 +44,13 @@ if __name__ == "__main__":
     data = data.to(device)
     gnn_config = read_yaml(config_index)
     in_channels_dict = get_in_channels(dataset_name, data)
-    model = Models.get_gnn_model(in_channels_dict, gnn_config["hidden_channels"], gnn_config["out_channels"]).to(device)
+    model = Models.get_hetero_model(dataset_name, in_channels_dict, gnn_config["hidden_channels"], gnn_config["out_channels"]).to(device)
     model.load_state_dict(torch.load(os.path.join(artifact_dir, f"gnn_model_{dataset_name}.pth")))
     model.eval()  
     # Test Loader
     test_loader = loader(data)
     # Run testing
-    test_metrics = test_mini_batch(model, test_loader)  
+    test_metrics = test_mini_batch(model, test_loader, dataset_name)  
 
     # Save test metrics for visualization
     with open(os.path.join(artifact_dir, f"test_metrics_{dataset_name}.pkl"), "wb") as f:

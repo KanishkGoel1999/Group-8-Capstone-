@@ -51,27 +51,43 @@ def preprocess_data(df, columns_to_remove):
     """
     return df.drop(columns=columns_to_remove, errors='ignore')
 
+# def get_edge_index_dict(batch):
+#     """
+#     Constructs the edge index dictionary for a given batch dynamically.
+    
+#     Parameters:
+#         batch (dict): A batch of data from the NeighborLoader containing edge indices.
+    
+#     Returns:
+#         dict: Edge index dictionary mapping edge types to their respective edge indices.
+#     """
+#     return {
+#         EDGE_TYPES['ASKS']: batch[EDGE_TYPES['ASKS']].edge_index,
+#         EDGE_TYPES['REV_ASKS']: batch[EDGE_TYPES['REV_ASKS']].edge_index,
+#         EDGE_TYPES['HAS']: batch[EDGE_TYPES['HAS']].edge_index,
+#         EDGE_TYPES['REV_HAS']: batch[EDGE_TYPES['REV_HAS']].edge_index,
+#         EDGE_TYPES['ANSWERS']: batch[EDGE_TYPES['ANSWERS']].edge_index,
+#         EDGE_TYPES['REV_ANSWERS']: batch[EDGE_TYPES['REV_ANSWERS']].edge_index,
+#         EDGE_TYPES['ACCEPTED_ANSWER']: batch[EDGE_TYPES['ACCEPTED_ANSWER']].edge_index,
+#         EDGE_TYPES['REV_ACCEPTED']: batch[EDGE_TYPES['REV_ACCEPTED']].edge_index,
+#         EDGE_TYPES['SELF_LOOP']: batch[EDGE_TYPES['SELF_LOOP']].edge_index,
+#     }
+
 def get_edge_index_dict(batch):
     """
-    Constructs the edge index dictionary for a given batch dynamically.
-    
+    Constructs the edge index dictionary for any heterogeneous batch dynamically.
+
     Parameters:
-        batch (dict): A batch of data from the NeighborLoader containing edge indices.
-    
+        batch (HeteroData): A mini-batch from NeighborLoader.
+
     Returns:
-        dict: Edge index dictionary mapping edge types to their respective edge indices.
+        dict: Edge index dictionary {edge_type: edge_index}.
     """
-    return {
-        EDGE_TYPES['ASKS']: batch[EDGE_TYPES['ASKS']].edge_index,
-        EDGE_TYPES['REV_ASKS']: batch[EDGE_TYPES['REV_ASKS']].edge_index,
-        EDGE_TYPES['HAS']: batch[EDGE_TYPES['HAS']].edge_index,
-        EDGE_TYPES['REV_HAS']: batch[EDGE_TYPES['REV_HAS']].edge_index,
-        EDGE_TYPES['ANSWERS']: batch[EDGE_TYPES['ANSWERS']].edge_index,
-        EDGE_TYPES['REV_ANSWERS']: batch[EDGE_TYPES['REV_ANSWERS']].edge_index,
-        EDGE_TYPES['ACCEPTED_ANSWER']: batch[EDGE_TYPES['ACCEPTED_ANSWER']].edge_index,
-        EDGE_TYPES['REV_ACCEPTED']: batch[EDGE_TYPES['REV_ACCEPTED']].edge_index,
-        EDGE_TYPES['SELF_LOOP']: batch[EDGE_TYPES['SELF_LOOP']].edge_index,
-    }
+    edge_index_dict = {}
+    for edge_type in batch.edge_types:
+        edge_index_dict[edge_type] = batch[edge_type].edge_index
+    
+    return edge_index_dict
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Train GNN on a specified dataset")
@@ -97,32 +113,17 @@ def get_in_channels(dataset_type, data):
             'answer': data['answer'].x.size(-1)
         }
     else:
-        raise ValueError('Invalid dataset type')
-    
+        # raise ValueError('Invalid dataset type')
+        in_channels_dict = {
+            'author': data['author'].x.size(-1),
+            'post': data['post'].x.size(-1),
+            'comment': data['comment'].x.size(-1)
+        }
+ 
     return in_channels_dict
+    
 
-# def train_mini_batch(model, train_loader, optimizer):
-#     model.train()
-#     total_loss = 0
-#     for batch in train_loader:
-#         optimizer.zero_grad()
-#         # Extract node features from the mini-batch for each node type.
-#         x_dict = {
-#             'user': batch['user'].x,
-#             'question': batch['question'].x,
-#             'answer': batch['answer'].x
-#         }
-#         # Build the edge index dictionary from the subgraph in the batch.
-#         edge_index_dict = get_edge_index_dict(batch)
-#         out = model(x_dict, edge_index_dict)
-#         # Compute loss on the current mini-batch of user nodes.
-#         loss = F.cross_entropy(out, batch['user'].y)
-#         loss.backward()
-#         optimizer.step()
-#         total_loss += loss.item()
-#     return total_loss / len(train_loader)
-
-def train_mini_batch(model, train_loader, optimizer):
+def train_mini_batch___(model, train_loader, optimizer, dataset_name):
     model.train()
     total_loss = 0
     correct = 0
@@ -138,7 +139,7 @@ def train_mini_batch(model, train_loader, optimizer):
         edge_index_dict = get_edge_index_dict(batch)
         out = model(x_dict, edge_index_dict)
 
-        loss = F.cross_entropy(out, batch['user'].y)
+        loss = F.cross_entropy(out, batch)
         loss.backward()
         optimizer.step()
         total_loss += loss.item()
@@ -153,29 +154,47 @@ def train_mini_batch(model, train_loader, optimizer):
 
     return avg_loss, accuracy
 
+def train_mini_batch(model, train_loader, optimizer, dataset_name):
+    model.train()
+    total_loss = 0
+    correct = 0
+    total_samples = 0
 
-# def train_full_batch(model, optimizer, data, train_mask):
-#     model.train()
-#     optimizer.zero_grad()
-    
-#     x_dict = {
-#         'user': data['user'].x,
-#         'question': data['question'].x,
-#         'answer': data['answer'].x
-#     }
-    
-#     edge_index_dict = get_edge_index_dict(data)
-#     out = model(x_dict, edge_index_dict)
+    # Determine node type dynamically
+    target_node = "user" if dataset_name == DATASET_TYPE_1 else "author"
 
-#     loss = F.cross_entropy(out[train_mask], data['user'].y[train_mask])
-    
-#     loss.backward()
-#     optimizer.step()
-    
-#     return loss.item()
+    for batch in train_loader:
+        optimizer.zero_grad()
+
+        # Dynamically construct x_dict
+        x_dict = {
+            key: batch[key].x
+            for key in batch.node_types
+        }
+
+        edge_index_dict = get_edge_index_dict(batch)
+        out = model(x_dict, edge_index_dict)
+
+        # Get labels and compute loss
+        y_true = batch[target_node].y
+        y_pred = out[target_node]
+
+        loss = F.cross_entropy(y_pred, y_true)
+        loss.backward()
+        optimizer.step()
+        total_loss += loss.item()
+
+        # Accuracy
+        preds = y_pred.argmax(dim=-1)
+        correct += (preds == y_true).sum().item()
+        total_samples += y_true.size(0)
+
+    avg_loss = total_loss / len(train_loader)
+    accuracy = correct / total_samples
+
+    return avg_loss, accuracy
 
 def train_full_batch(model, optimizer, data, train_mask):
-    # criterion = torch.nn.CrossEntropyLoss(weight=class_weights).to(device)
     model.train()
     optimizer.zero_grad()
     
@@ -198,15 +217,52 @@ def train_full_batch(model, optimizer, data, train_mask):
 
     return loss.item(), accuracy
 
+@torch.no_grad()
+def test_mini_batch(model, test_loader, dataset_name):
+    model.eval()
+    total_loss = 0
+    all_preds = []
+    all_labels = []
 
+    # Dynamically determine the node type
+    target_node = "user" if dataset_name == DATASET_TYPE_1 else "author"
+
+    for batch in test_loader:
+        # Construct x_dict dynamically
+        x_dict = {
+            key: batch[key].x for key in batch.node_types
+        }
+
+        edge_index_dict = get_edge_index_dict(batch)
+        out = model(x_dict, edge_index_dict)
+
+        # Extract predictions and labels for target node
+        node_out = out[target_node]
+        node_labels = batch[target_node].y
+
+        loss = F.cross_entropy(node_out, node_labels)
+        total_loss += loss.item()
+
+        preds = node_out.argmax(dim=-1)
+        all_preds.append(preds.cpu())
+        all_labels.append(node_labels.cpu())
+
+    avg_loss = total_loss / len(test_loader)
+    all_preds = torch.cat(all_preds, dim=0).numpy()
+    all_labels = torch.cat(all_labels, dim=0).numpy()
+
+    metrics = Metrics.compute_metrics(all_labels, all_preds)
+    metrics["loss"] = avg_loss
+
+    return metrics
 
 # @torch.no_grad()
 # def test_mini_batch(model, test_loader):
 #     model.eval()
-#     total_correct = 0
-#     total_examples = 0
+#     total_loss = 0
 #     all_preds = []
 #     all_labels = []
+
 #     for batch in test_loader:
 #         x_dict = {
 #             'user': batch['user'].x,
@@ -215,71 +271,21 @@ def train_full_batch(model, optimizer, data, train_mask):
 #         }
 #         edge_index_dict = get_edge_index_dict(batch)
 #         out = model(x_dict, edge_index_dict)
+
+#         loss = F.cross_entropy(out, batch['user'].y)  # Compute loss
+#         total_loss += loss.item()
+
 #         preds = out.argmax(dim=-1)
 #         all_preds.append(preds.cpu())
 #         all_labels.append(batch['user'].y.cpu())
-#         total_correct += (preds == batch['user'].y).sum().item()
-#         total_examples += batch['user'].y.size(0)
-#     # accuracy = total_correct / total_examples
+
+#     avg_loss = total_loss / len(test_loader)
 #     all_preds = torch.cat(all_preds, dim=0).numpy()
 #     all_labels = torch.cat(all_labels, dim=0).numpy()
+
 #     metrics = Metrics.compute_metrics(all_labels, all_preds)
-    
-#     return metrics
+#     metrics["loss"] = avg_loss  # Add loss to metrics
 
-@torch.no_grad()
-def test_mini_batch(model, test_loader):
-    model.eval()
-    total_loss = 0
-    all_preds = []
-    all_labels = []
-
-    for batch in test_loader:
-        x_dict = {
-            'user': batch['user'].x,
-            'question': batch['question'].x,
-            'answer': batch['answer'].x
-        }
-        edge_index_dict = get_edge_index_dict(batch)
-        out = model(x_dict, edge_index_dict)
-
-        loss = F.cross_entropy(out, batch['user'].y)  # Compute loss
-        total_loss += loss.item()
-
-        preds = out.argmax(dim=-1)
-        all_preds.append(preds.cpu())
-        all_labels.append(batch['user'].y.cpu())
-
-    avg_loss = total_loss / len(test_loader)
-    all_preds = torch.cat(all_preds, dim=0).numpy()
-    all_labels = torch.cat(all_labels, dim=0).numpy()
-
-    metrics = Metrics.compute_metrics(all_labels, all_preds)
-    metrics["loss"] = avg_loss  # Add loss to metrics
-
-    return metrics
-
-# @torch.no_grad()
-# def test_full_batch(model, data, test_mask):
-#     model.eval()
-
-#     x_dict = {
-#         'user': data['user'].x,
-#         'question': data['question'].x,
-#         'answer': data['answer'].x
-#     }
-    
-#     edge_index_dict = get_edge_index_dict(data)
-#     out = model(x_dict, edge_index_dict)
-
-#     preds = out[test_mask].argmax(dim=-1)
-#     labels = data['user'].y[test_mask]
-
-#     all_preds = preds.cpu().numpy()
-#     all_labels = labels.cpu().numpy()
-    
-#     metrics = Metrics.compute_metrics(all_labels, all_preds)
-    
 #     return metrics
 
 @torch.no_grad()
