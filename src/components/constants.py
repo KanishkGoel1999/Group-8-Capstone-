@@ -38,12 +38,12 @@ EDGE_TYPES = {
     ],
     
     'ASK_REDDIT': [
-        ('author', 'posts', 'post'),
-        ('post', 'rev_posts', 'author'),
+        ('author', 'wrote_post', 'post'),
+        ('post', 'wrote_post__reverse', 'author'),
+        ('author', 'wrote_comment', 'comment'),
+        ('comment', 'wrote_comment__reverse', 'author'),
         ('post', 'has_comment', 'comment'),
-        ('comment', 'rev_has_comment', 'post'),
-        ('comment', 'replies', 'comment'),
-        ('comment', 'self_loop', 'comment'),
+        ('comment', 'has_comment__reverse', 'post'),
         ('author', 'self_loop', 'author')
     ]
 }

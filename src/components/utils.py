@@ -121,38 +121,6 @@ def get_in_channels(dataset_type, data):
         }
  
     return in_channels_dict
-    
-
-def train_mini_batch___(model, train_loader, optimizer, dataset_name):
-    model.train()
-    total_loss = 0
-    correct = 0
-    total_samples = 0
-
-    for batch in train_loader:
-        optimizer.zero_grad()
-        x_dict = {
-            'user': batch['user'].x,
-            'question': batch['question'].x,
-            'answer': batch['answer'].x
-        }
-        edge_index_dict = get_edge_index_dict(batch)
-        out = model(x_dict, edge_index_dict)
-
-        loss = F.cross_entropy(out, batch)
-        loss.backward()
-        optimizer.step()
-        total_loss += loss.item()
-
-        # Track accuracy
-        preds = out.argmax(dim=-1)
-        correct += (preds == batch['user'].y).sum().item()
-        total_samples += batch['user'].y.size(0)
-
-    avg_loss = total_loss / len(train_loader)
-    accuracy = correct / total_samples  # Compute accuracy
-
-    return avg_loss, accuracy
 
 def train_mini_batch(model, train_loader, optimizer, dataset_name):
     model.train()
@@ -194,29 +162,6 @@ def train_mini_batch(model, train_loader, optimizer, dataset_name):
 
     return avg_loss, accuracy
 
-def train_full_batch(model, optimizer, data, train_mask):
-    model.train()
-    optimizer.zero_grad()
-    
-    x_dict = {
-        'user': data['user'].x,
-        'question': data['question'].x,
-        'answer': data['answer'].x
-    }
-    
-    edge_index_dict = get_edge_index_dict(data)
-    out = model(x_dict, edge_index_dict)
-
-    loss = F.cross_entropy(out[train_mask], data['user'].y[train_mask])
-    loss.backward()
-    optimizer.step()
-
-    # Compute accuracy
-    preds = out[train_mask].argmax(dim=-1)
-    accuracy = (preds == data['user'].y[train_mask]).sum().item() / train_mask.sum().item()
-
-    return loss.item(), accuracy
-
 @torch.no_grad()
 def test_mini_batch(model, test_loader, dataset_name):
     model.eval()
@@ -256,72 +201,6 @@ def test_mini_batch(model, test_loader, dataset_name):
 
     return metrics
 
-# @torch.no_grad()
-# def test_mini_batch(model, test_loader):
-#     model.eval()
-#     total_loss = 0
-#     all_preds = []
-#     all_labels = []
-
-#     for batch in test_loader:
-#         x_dict = {
-#             'user': batch['user'].x,
-#             'question': batch['question'].x,
-#             'answer': batch['answer'].x
-#         }
-#         edge_index_dict = get_edge_index_dict(batch)
-#         out = model(x_dict, edge_index_dict)
-
-#         loss = F.cross_entropy(out, batch['user'].y)  # Compute loss
-#         total_loss += loss.item()
-
-#         preds = out.argmax(dim=-1)
-#         all_preds.append(preds.cpu())
-#         all_labels.append(batch['user'].y.cpu())
-
-#     avg_loss = total_loss / len(test_loader)
-#     all_preds = torch.cat(all_preds, dim=0).numpy()
-#     all_labels = torch.cat(all_labels, dim=0).numpy()
-
-#     metrics = Metrics.compute_metrics(all_labels, all_preds)
-#     metrics["loss"] = avg_loss  # Add loss to metrics
-
-#     return metrics
-
-@torch.no_grad()
-def test_full_batch(model, data, test_mask):
-    # criterion = torch.nn.CrossEntropyLoss(weight=class_weights).to(device)
-    model.eval()
-
-    x_dict = {
-        'user': data['user'].x,
-        'question': data['question'].x,
-        'answer': data['answer'].x
-    }
-    
-    edge_index_dict = get_edge_index_dict(data)
-    out = model(x_dict, edge_index_dict)
-
-    loss = F.cross_entropy(out[test_mask], data['user'].y[test_mask])  # Compute test loss
-    preds = out[test_mask].argmax(dim=-1)
-    labels = data['user'].y[test_mask]
-
-    all_preds = preds.cpu().numpy()
-    all_labels = labels.cpu().numpy()
-
-    metrics = Metrics.compute_metrics(all_labels, all_preds)
-    metrics["loss"] = loss.item()  # Add loss to metrics
-
-    return metrics
-
-
-def set_seed(seed):
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
 
 
 

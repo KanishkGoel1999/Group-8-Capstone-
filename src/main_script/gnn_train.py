@@ -9,7 +9,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from components.metric import Metrics
 from components.model import Models
 from components.constants import EDGE_TYPES, DATASET_TYPE_1, EDGE_TYPES_DICT
-from components.utils import get_edge_index_dict, train_mini_batch, train_full_batch, test_mini_batch, test_full_batch, set_seed, get_in_channels, parse_args, read_yaml
+from components.utils import get_edge_index_dict, train_mini_batch, get_in_channels, parse_args, read_yaml
 import matplotlib.pyplot as plt
 import argparse
 import pickle
@@ -85,8 +85,6 @@ def add_reverse_and_self_loop_edges(data, dataset_name):
 
 #     return data
 
-
-
 def add_reverse_edges_reddit(data):
     # Get a list of all original edge types.
     original_edge_types = list(data.edge_types)
@@ -109,6 +107,30 @@ def add_reverse_edges_reddit(data):
 
     return data
 
+# def add_reverse_edges_reddit(data):
+#     # Reverse for author -> post (wrote_post)
+#     if ('author', 'wrote_post', 'post') in data.edge_types:
+#         edge_index = data[('author', 'wrote_post', 'post')].edge_index
+#         data[('post', 'wrote_post__reverse', 'author')].edge_index = edge_index.flip(0)
+
+#     # Reverse for author -> comment (wrote_comment)
+#     if ('author', 'wrote_comment', 'comment') in data.edge_types:
+#         edge_index = data[('author', 'wrote_comment', 'comment')].edge_index
+#         data[('comment', 'wrote_comment__reverse', 'author')].edge_index = edge_index.flip(0)
+
+#     # Reverse for post -> comment (has_comment)
+#     if ('post', 'has_comment', 'comment') in data.edge_types:
+#         edge_index = data[('post', 'has_comment', 'comment')].edge_index
+#         data[('comment', 'has_comment__reverse', 'post')].edge_index = edge_index.flip(0)
+
+#     # Add self-loop only for author nodes
+#     num_authors = data['author'].num_nodes
+#     row = torch.arange(num_authors, dtype=torch.long)
+#     self_loop_edge_index = torch.stack([row, row], dim=0)
+#     data[('author', 'self_loop', 'author')].edge_index = self_loop_edge_index
+
+#     return data
+
 def initialize_model(dataset_name, in_channels_dict):
     # Initialize GNN model
     model = Models.get_hetero_model(
@@ -130,6 +152,7 @@ def initialize_optimizer(model, gnn_config):
 
 def stratified_input_batches(data, node_type='user', mask_key='train_mask', label_key='y', batch_size=64):
     torch.manual_seed(42)
+    print('DATA', data)
     labels = data[node_type][label_key]
     mask = data[node_type][mask_key]
     node_indices = torch.arange(data[node_type].num_nodes)[mask]
@@ -161,7 +184,7 @@ def loader(batch_size, num_neighbors):
         nodes = 'author'
     if batch_size != 0: # mini-batch or full-batch condition
         print('Enteredddddddddddddd')
-        train_input_batches = stratified_input_batches(data, batch_size=batch_size)
+        train_input_batches = stratified_input_batches(data, nodes, batch_size=batch_size)
         torch.manual_seed(42)
         train_loaders = [
             NeighborLoader(
@@ -226,7 +249,6 @@ if __name__ == "__main__":
     in_channels_dict = get_in_channels(dataset_name, data)
     model = initialize_model(dataset_name, in_channels_dict)
     optimizer = initialize_optimizer(model, gnn_config)
-    batches = stratified_input_batches(data, target_node, mask_key='train_mask', label_key='y', batch_size=64)
     
     train_loaders = loader(gnn_config['batch_size'], gnn_config['num_neighbors'])
     print('----------------------------')
