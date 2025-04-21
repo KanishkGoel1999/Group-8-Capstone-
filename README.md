@@ -1,3 +1,10 @@
+This repository contains two projects:
+- GNN for Social Network
+The main branch hosts the GNN for Social Network project.
+The `shikha` and `harsha` branches have been merged into the main branch.
+- GNN for Finance
+The `kanishk` branch contains the GNN for Finance project.
+
 # 🚧 Project In Progress: Identifying Influential Users Using Classical Models and Graph Neural Networks
 
 > ⚠️ This project is currently under active development. Final model comparisons, visualizations, and documentation are subject to change.
@@ -54,8 +61,8 @@ The final report (PDF) includes:
 
 ## 👥 Authors
 
-- Harshavardana Reddy Kolan  
-- Shikha Kumari  
-- Amir Hossein Jafari
+- Shikha Kumari 
+- Harshavardana Reddy Kolan   
+- Prof. Amir Hossein Jafari
 
 ---
