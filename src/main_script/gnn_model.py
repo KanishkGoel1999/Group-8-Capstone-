@@ -75,7 +75,6 @@ def add_reverse_and_self_loop_edges(data):
 
     return data
 
-
 data = add_reverse_and_self_loop_edges(data)
 edge_index_dict = get_edge_index_dict(data)
 
@@ -130,24 +129,10 @@ def stratified_input_batches(data, node_type='user', mask_key='train_mask', labe
     return batches
 
 
-# Get balanced training input nodes for 'user' type
-# input_nodes = get_class_balanced_input_nodes(data, node_type='user', mask_key='train_mask', seed=42)
-
-# # Compute class distribution in training set
-# train_labels = data['user'].y[train_mask]
-# class_sample_count = torch.bincount(train_labels)
-# class_weights = 1.0 / class_sample_count.float()
-# sample_weights = class_weights[train_labels]
-
-# # Create the sampler
-# sampler = WeightedRandomSampler(weights=sample_weights, num_samples=train_mask.sum().item(), replacement=True)
-
-# sampler = ImbalancedSampler(data, input_nodes=('user', train_mask))
-
 if batch_size != 0: # mini-batch or full-batch condition
     print('Enteredddddddddddddd')
     train_input_batches = stratified_input_batches(data, batch_size=batch_size)
-
+    torch.manual_seed(42)
     train_loaders = [
         NeighborLoader(
             data,
@@ -182,49 +167,47 @@ for epoch in range(1, num_epochs + 1):
     total_loss = 0
     total_correct = 0
     total_samples = 0
-
+    total_acc = 0
+    torch.manual_seed(42)
     for loader in train_loaders:
         loss, acc = train_mini_batch(model, loader, optimizer)
         total_loss += loss
-        total_correct += acc * batch_size
-        total_samples += batch_size
+        total_acc += acc
+        # total_auc += auc
 
     epoch_loss = total_loss / len(train_loaders)
-    epoch_acc = total_correct / total_samples
-
-    test_metrics = test_mini_batch(model, test_loader)
+    epoch_acc = total_acc / len(train_loaders)
+    # epoch_auc = total_auc / len(train_loaders)
 
     train_losses.append(epoch_loss)
     train_accuracies.append(epoch_acc)
-    test_losses.append(test_metrics["loss"])
-    test_accuracies.append(test_metrics["accuracy"])
+    # train_aucs.append(epoch_auc)
 
-    if epoch % 5 == 0:
-        print(f"Epoch {epoch:03d} - Train Loss: {epoch_loss:.4f}, Test Loss: {test_metrics['loss']:.4f}")
-        print(f"Epoch {epoch:03d} - Train Accuracy: {epoch_acc:.4f}, Test Accuracy: {test_metrics['accuracy']:.4f}")
+    print(f"Epoch {epoch:03d} - Loss: {epoch_loss:.4f} - Acc: {epoch_acc:.4f}")
 
-# TODO: RandomSampler with class weights (search in PyG)
-# Use DataLoaders from now on.
-# for epoch in range(1, num_epochs + 1):
-#     if batch_size != 0:
-#         print('Mini batch....................................................')
-#         loss, accuracy = train_mini_batch(model, train_loader, optimizer)
-#         test_metrics = test_mini_batch(model, test_loader)
-#     else:
-#         loss, accuracy = train_full_batch(model, optimizer, data, train_mask)
-#         test_metrics = test_full_batch(model, data, test_mask)
+# Save model
+torch.save(model.state_dict(), os.path.join(os.path.dirname(__file__), "gnn_model.pth"))
 
-#     # Collect loss and accuracy for plotting
-#     train_losses.append(loss)
-#     train_accuracies.append(accuracy)
-#     test_losses.append(test_metrics["loss"])
-#     test_accuracies.append(test_metrics["accuracy"])
+# Testing
+model.load_state_dict(torch.load("gnn_model.pth"))
+model.eval()
 
-#     if epoch % 5 == 0:
-#         print(f"Epoch {epoch:03d} - Train Loss: {loss:.4f}, Test Loss: {test_metrics['loss']:.4f}")
-#         print(f"Epoch {epoch:03d} - Train Accuracy: {accuracy:.4f}, Test Accuracy: {test_metrics['accuracy']:.4f}")
+# Test loader
+test_loader = NeighborLoader(
+    data,
+    num_neighbors=[10, 10],
+    input_nodes=('user', data['user'].test_mask),
+    batch_size=64,
+    shuffle=False
+)
 
+# Evaluate for multiple epochs
+# test_losses = []
+# test_aucs = []
 
+test_metrics = test_mini_batch(model, test_loader)
+test_losses.append(test_metrics["loss"])
+test_accuracies.append(test_metrics["accuracy"])
 
 print(f"Test Performance Metrics - Recall: {test_metrics['recall']:.4f}")
 print(f"Test Performance Metrics - Precision: {test_metrics['precision']:.4f}")
@@ -232,24 +215,75 @@ print(f"Test Performance Metrics - F1-score: {test_metrics['f1_score']:.4f}")
 print(f"Test Performance Metrics - Accuracy: {test_metrics['accuracy']:.4f}")
 print(f"Test Performance Metrics - AUC: {test_metrics['auc']:.4f}")
 
-plt.figure(figsize=(12, 5))
+# for i in range(1, 11):  # 10 passes for averaging
+#     test_metrics = test_mini_batch(model, test_loader)
+#     test_losses.append(test_metrics["loss"])
+#     test_aucs.append(test_metrics["auc"])
+#     print(f"Run {i:02d}: Loss={test_metrics['loss']:.4f} AUC={test_metrics['auc']:.4f}")
 
-# Subplot 1: Train Loss vs Test Loss
-plt.subplot(1, 2, 1)
-plt.plot(range(1, len(train_losses) + 1), train_losses, label="Train Loss", color="red")
-plt.plot(range(1, len(test_losses) + 1), test_losses, label="Test Loss", color="blue")
-plt.xlabel("Epochs")
-plt.ylabel("Loss")
-plt.title("GNN Train vs Test Loss")
-plt.legend()
+# Plot
+# plt.figure(figsize=(10, 4))
+# plt.subplot(1, 2, 1)
+# plt.plot(range(1, 11), test_losses, label="Test Loss", color="red")
+# plt.xlabel("Run")
+# plt.ylabel("Loss")
+# plt.title("Test Loss Across Runs")
 
-# Subplot 2: Train Accuracy vs Test Accuracy
-plt.subplot(1, 2, 2)
-plt.plot(range(1, len(train_accuracies) + 1), train_accuracies, label="Train Accuracy", color="green")
-plt.plot(range(1, len(test_accuracies) + 1), test_accuracies, label="Test Accuracy", color="orange")
-plt.xlabel("Epochs")
-plt.ylabel("Accuracy")
-plt.title("GNN Train vs Test Accuracy")
-plt.legend()
+# plt.subplot(1, 2, 2)
+# plt.plot(range(1, 11), test_aucs, label="Test AUC", color="green")
+# plt.xlabel("Run")
+# plt.ylabel("AUC")
+# plt.title("Test AUC Across Runs")
 
-plt.show()
+# plt.tight_layout()
+# plt.show()
+
+    # for loader in train_loaders:
+    #     loss, acc = train_mini_batch(model, loader, optimizer)
+    #     total_loss += loss
+    #     total_correct += acc * batch_size
+    #     total_samples += batch_size
+
+    # epoch_loss = total_loss / len(train_loaders)
+    # epoch_acc = total_correct / total_samples
+
+    # train_losses.append(epoch_loss)
+    # train_accuracies.append(epoch_acc)
+    
+    # if epoch % 5 == 0:
+    #     # print(f"Epoch {epoch:03d} - Train Loss: {epoch_loss:.4f}, Test Loss: {test_metrics['loss']:.4f}")
+    #     # print(f"Epoch {epoch:03d} - Train Accuracy: {epoch_acc:.4f}, Test Accuracy: {test_metrics['accuracy']:.4f}")
+    #     print(f"Epoch {epoch:03d} - Train Loss: {epoch_loss:.4f}")
+    #     print(f"Epoch {epoch:03d} - Train Accuracy: {epoch_acc:.4f}")
+
+# test_metrics = test_mini_batch(model, test_loader)
+# test_losses.append(test_metrics["loss"])
+# test_accuracies.append(test_metrics["accuracy"])
+
+# print(f"Test Performance Metrics - Recall: {test_metrics['recall']:.4f}")
+# print(f"Test Performance Metrics - Precision: {test_metrics['precision']:.4f}")
+# print(f"Test Performance Metrics - F1-score: {test_metrics['f1_score']:.4f}")
+# print(f"Test Performance Metrics - Accuracy: {test_metrics['accuracy']:.4f}")
+# print(f"Test Performance Metrics - AUC: {test_metrics['auc']:.4f}")
+
+# plt.figure(figsize=(12, 5))
+
+# # Subplot 1: Train Loss vs Test Loss
+# plt.subplot(1, 2, 1)
+# plt.plot(range(1, len(train_losses) + 1), train_losses, label="Train Loss", color="red")
+# plt.plot(range(1, len(test_losses) + 1), test_losses, label="Test Loss", color="blue")
+# plt.xlabel("Epochs")
+# plt.ylabel("Loss")
+# plt.title("GNN Train vs Test Loss")
+# plt.legend()
+
+# # Subplot 2: Train Accuracy vs Test Accuracy
+# plt.subplot(1, 2, 2)
+# plt.plot(range(1, len(train_accuracies) + 1), train_accuracies, label="Train Accuracy", color="green")
+# plt.plot(range(1, len(test_accuracies) + 1), test_accuracies, label="Test Accuracy", color="orange")
+# plt.xlabel("Epochs")
+# plt.ylabel("Accuracy")
+# plt.title("GNN Train vs Test Accuracy")
+# plt.legend()
+
+# plt.show()

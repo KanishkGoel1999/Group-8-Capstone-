@@ -9,8 +9,16 @@ import torch
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from components.constants import EDGE_TYPES
+from components.constants import EDGE_TYPES, DATASET_TYPE_1
 from components.metric import Metrics
+import argparse
+import yaml
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Train GNN on a specified dataset and config set")
+    parser.add_argument("dataset", type=str, help="Dataset name (e.g., STACK_OVERFLOW or ASK_REDDIT)")
+    parser.add_argument("config_index", type=int, help="Index of the GNN configuration set from YAML")
+    return parser.parse_args()
 
 # function for checking missing values #TODO
 def split_data(df, target_column, test_size=0.2, random_state=42):
@@ -64,6 +72,34 @@ def get_edge_index_dict(batch):
         EDGE_TYPES['REV_ACCEPTED']: batch[EDGE_TYPES['REV_ACCEPTED']].edge_index,
         EDGE_TYPES['SELF_LOOP']: batch[EDGE_TYPES['SELF_LOOP']].edge_index,
     }
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Train GNN on a specified dataset")
+    parser.add_argument("dataset", type=str, help="Dataset name (e.g., STACKOVER_FLOW or ASK_REDDIT)")
+    return parser.parse_args()
+
+def read_yaml(set_num):
+    # Load YAML configuration
+    config_path = os.path.join(os.path.dirname(__file__), "..", "components", "config.yaml")
+    with open(config_path, "r") as file:
+        config = yaml.safe_load(file)
+
+    # Load GNN hyperparameters from config
+    gnn_config = config["gnn"]["sets"][set_num]  # change index for different configurations
+    return gnn_config
+
+def get_in_channels(dataset_type, data):
+    if dataset_type == DATASET_TYPE_1:
+        # Define input channels for GNN model
+        in_channels_dict = {
+            'user': data['user'].x.size(-1),
+            'question': data['question'].x.size(-1),
+            'answer': data['answer'].x.size(-1)
+        }
+    else:
+        raise ValueError('Invalid dataset type')
+    
+    return in_channels_dict
 
 # def train_mini_batch(model, train_loader, optimizer):
 #     model.train()

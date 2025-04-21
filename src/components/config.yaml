@@ -11,6 +11,7 @@ gnn:
       num_epochs: 50
       batch_size: 64
       num_neighbors: [10, 10]  # Neighbor sampling per layer
+      split: "train_rest"
     - hidden_channels: 64
       out_channels: 2
       aggregation: "mean"
@@ -19,6 +20,7 @@ gnn:
       num_epochs: 50
       batch_size: 64
       num_neighbors: [10, 10]
+      split: "train_rest"
     # - hidden_channels: 32
     #   out_channels: 2
     #   aggregation: "sum"
