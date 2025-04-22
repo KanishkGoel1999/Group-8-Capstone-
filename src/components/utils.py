@@ -51,27 +51,6 @@ def preprocess_data(df, columns_to_remove):
     """
     return df.drop(columns=columns_to_remove, errors='ignore')
 
-# def get_edge_index_dict(batch):
-#     """
-#     Constructs the edge index dictionary for a given batch dynamically.
-    
-#     Parameters:
-#         batch (dict): A batch of data from the NeighborLoader containing edge indices.
-    
-#     Returns:
-#         dict: Edge index dictionary mapping edge types to their respective edge indices.
-#     """
-#     return {
-#         EDGE_TYPES['ASKS']: batch[EDGE_TYPES['ASKS']].edge_index,
-#         EDGE_TYPES['REV_ASKS']: batch[EDGE_TYPES['REV_ASKS']].edge_index,
-#         EDGE_TYPES['HAS']: batch[EDGE_TYPES['HAS']].edge_index,
-#         EDGE_TYPES['REV_HAS']: batch[EDGE_TYPES['REV_HAS']].edge_index,
-#         EDGE_TYPES['ANSWERS']: batch[EDGE_TYPES['ANSWERS']].edge_index,
-#         EDGE_TYPES['REV_ANSWERS']: batch[EDGE_TYPES['REV_ANSWERS']].edge_index,
-#         EDGE_TYPES['ACCEPTED_ANSWER']: batch[EDGE_TYPES['ACCEPTED_ANSWER']].edge_index,
-#         EDGE_TYPES['REV_ACCEPTED']: batch[EDGE_TYPES['REV_ACCEPTED']].edge_index,
-#         EDGE_TYPES['SELF_LOOP']: batch[EDGE_TYPES['SELF_LOOP']].edge_index,
-#     }
 
 def get_edge_index_dict(batch):
     """
@@ -88,11 +67,6 @@ def get_edge_index_dict(batch):
         edge_index_dict[edge_type] = batch[edge_type].edge_index
     
     return edge_index_dict
-
-def parse_args():
-    parser = argparse.ArgumentParser(description="Train GNN on a specified dataset")
-    parser.add_argument("dataset", type=str, help="Dataset name (e.g., STACKOVER_FLOW or ASK_REDDIT)")
-    return parser.parse_args()
 
 def read_yaml(set_num):
     # Load YAML configuration
