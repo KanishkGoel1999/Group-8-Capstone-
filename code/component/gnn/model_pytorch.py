@@ -1,7 +1,4 @@
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from torch_geometric.nn import HeteroConv, SAGEConv, Linear
+from component.packages import *
 
 class HeteroGNN(torch.nn.Module):
     def __init__(self, in_size_dict, hidden_size, out_size, n_layers, etypes, target_node):

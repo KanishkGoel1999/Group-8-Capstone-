@@ -1,25 +1,7 @@
-import os
-import numpy as np
-import pandas as pd
-import torch
-import torch.nn as nn
-import torch.optim as optim
-import torch.nn.functional as F
-import time
-#import dgl
-#from dgl.nn import RelGraphConv
-from sklearn.preprocessing import StandardScaler
+from component.packages import *
+from component.gnn.model_dgl import *
 
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, \
-    average_precision_score, confusion_matrix, precision_recall_curve, roc_curve, auc
-import matplotlib.pyplot as plt
-import networkx as nx
-import prettytable
-from torch_geometric.data import HeteroData
-from sklearn.preprocessing import StandardScaler
-from torch_geometric.loader import NeighborLoader
-
-def create_pyg_graph(df, transaction_feats, merchant_feats, user_feats):
+def create_graph_pyg(df, transaction_feats, merchant_feats, user_feats):
     # Convert dataframe values to float32 for tensor compatibility
     df = df.astype(np.float32)
 
@@ -146,7 +128,9 @@ def create_graph_dgl(df, transaction_feats, merchant_feats, user_feats):
 
     # Assign fraud labels ('is_fraud') to transaction nodes
     g.nodes['transaction'].data['y'] = torch.tensor(df['is_fraud'].values, dtype=torch.float)
-
+    # df_txn_unique = df.drop_duplicates(subset=['transaction_id'])
+    # g.nodes['transaction'].data['y'] = torch.tensor(df_txn_unique['is_fraud'].values, dtype=torch.float)
+    # classified_idx = df_txn_unique.index
     return g, transaction_feats, user_feats, merchant_feats, classified_idx
 
 
@@ -169,7 +153,7 @@ def print_graph_info_dgl(g):
     print("Merchant_To_User Edges: ", g.edges(etype='merchant<>user'))
 
 
-def print_pyg_graph_info(data):
+def print_graph_info_pyg(data):
     """
     Prints PyG graph properties and information
     """
@@ -216,124 +200,6 @@ def print_metrics(accuracy, precision, recall, f1, roc_auc, aucpr, m_name):
     results.add_row(["AUCPR", aucpr])
     print(results)
 
-
-def train_pyg_model(model, data, train_idx, valid_idx, num_epochs=20, lr=0.001, weight_decay=5e-4, batch_size=128,
-                    m_name="best_pyg_model.pth"):
-    """
-    Trains the PyG model and saves the best one based on F1-score.
-    """
-
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    #device = torch.device('cpu')
-    model.to(device)
-    optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
-    criterion = nn.CrossEntropyLoss()
-
-    # DataLoader for efficient training
-    train_loader = NeighborLoader(
-        data,
-        num_neighbors={key: [5, 5] for key in data.edge_types},
-        input_nodes=('transaction', torch.tensor(train_idx, dtype=torch.long)),
-        batch_size=batch_size,
-        shuffle=True
-    )
-
-    valid_loader = NeighborLoader(
-        data,
-        num_neighbors={key: [5, 5] for key in data.edge_types},
-        input_nodes=('transaction', torch.tensor(valid_idx, dtype=torch.long)),
-        batch_size=batch_size,
-        shuffle=False
-    )
-
-    best_f1 = -np.inf  # Track best F1-score
-    os.makedirs("models", exist_ok=True)
-    best_model_path = os.path.join("models", m_name)
-
-    losses = []
-    f1_scores = []
-
-    for epoch in range(num_epochs):
-        start_time = time.time()
-
-        # Training phase
-        model.train()
-        total_loss = 0
-        all_preds, all_labels = [], []
-
-        for batch in train_loader:
-            batch = batch.to(device)
-            optimizer.zero_grad()
-
-            # Forward pass
-            out = model(batch)
-
-            # Compute loss
-            loss = criterion(out, batch['transaction'].y.long())
-            loss.backward()
-            optimizer.step()
-
-            total_loss += loss.item()
-
-            # Get predictions
-            preds = out.argmax(dim=1).cpu().numpy()
-            labels = batch['transaction'].y.cpu().numpy()
-
-            all_preds.extend(preds)
-            all_labels.extend(labels)
-
-        avg_train_loss = total_loss / len(train_loader)
-
-        # Compute training metrics
-        train_accuracy, train_precision, train_recall, train_f1, _, _, _= get_metrics(all_labels, all_preds)
-
-        # Validation phase
-        model.eval()
-        total_val_loss = 0
-        all_preds, all_labels = [], []
-
-        with torch.no_grad():
-            for batch in valid_loader:
-                batch = batch.to(device)
-                out = model(batch)
-
-                # Compute loss
-                loss = criterion(out, batch['transaction'].y.long())
-                total_val_loss += loss.item()
-
-                # Get predictions
-                preds = out.argmax(dim=1).cpu().numpy()
-                labels = batch['transaction'].y.cpu().numpy()
-
-                all_preds.extend(preds)
-                all_labels.extend(labels)
-
-        avg_val_loss = total_val_loss / len(valid_loader)
-
-        # Compute validation metrics
-        val_accuracy, val_precision, val_recall, val_f1, _, _, _ = get_metrics(all_labels, all_preds)
-
-        duration = time.time() - start_time
-
-        # Print metrics
-        print(f"Epoch {epoch + 1}/{num_epochs} - Time: {duration:.2f}s")
-        print(f"Train - Loss: {avg_train_loss:.4f} - Acc: {train_accuracy:.4f} - F1: {train_f1:.4f}")
-        print(f"Valid - Loss: {avg_val_loss:.4f} - Acc: {val_accuracy:.4f} - F1: {val_f1:.4f}")
-
-        losses.append(avg_val_loss)
-        f1_scores.append(val_f1)
-
-        # Save best model based on F1-score
-        if val_f1 > best_f1:
-            best_f1 = val_f1
-            print("Saving Model Keys:")
-            print(model.state_dict().keys())
-            torch.save(model.state_dict(), best_model_path)
-            print(f"New best model saved with F1-score: {best_f1:.4f}!")
-
-    print(f"Training complete. Best model saved at: {best_model_path}")
-
-    return f1_scores, losses
 
 
 def train_pyg_model_ES(model, data, train_idx, valid_idx, num_epochs=20, lr=0.001, weight_decay=5e-4, batch_size=128,
@@ -444,83 +310,6 @@ def train_pyg_model_ES(model, data, train_idx, valid_idx, num_epochs=20, lr=0.00
     print(f"Training complete. Best model saved at: {best_model_path}")
     return f1_scores, losses
 
-def train_pyg_model_without_dataloader(model, data, train_idx, valid_idx, num_epochs=20, lr=0.01, weight_decay=5e-4, m_name="best_pyg_model.pth"):
-    """
-    Trains the PyG model without using DataLoader, processing the full dataset in each epoch.
-    """
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model.to(device)
-    optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
-    criterion = nn.CrossEntropyLoss()
-
-    # Ensure models directory exists
-    os.makedirs("models", exist_ok=True)
-    best_model_path = os.path.join("models", m_name)
-    best_f1 = -np.inf  # Track best F1-score
-
-    # Move data to device
-    data = data.to(device)
-
-    # Extract train and validation labels
-    labels = data['transaction'].y.long()
-    losses = []
-    f1_scores = []
-
-    for epoch in range(num_epochs):
-        start_time = time.time()
-
-        # Training phase
-        model.train()
-        optimizer.zero_grad()
-
-        # Forward pass (entire dataset at once)
-        out = model(data)
-
-        # Compute loss on training nodes only
-        loss = criterion(out[train_idx], labels[train_idx])
-        loss.backward()
-        optimizer.step()
-
-        # Get predictions
-        preds_train = out[train_idx].argmax(dim=1).cpu().numpy()
-        labels_train = labels[train_idx].cpu().numpy()
-
-        # Compute training metrics
-        train_accuracy, train_precision, train_recall, train_f1, _, _, _ = get_metrics(labels_train, preds_train)
-
-        # Validation phase
-        model.eval()
-        with torch.no_grad():
-            out_valid = model(data)
-
-            # Compute loss on validation nodes
-            val_loss = criterion(out_valid[valid_idx], labels[valid_idx])
-
-            # Get predictions
-            preds_valid = out_valid[valid_idx].argmax(dim=1).cpu().numpy()
-            labels_valid = labels[valid_idx].cpu().numpy()
-
-            # Compute validation metrics
-            val_accuracy, val_precision, val_recall, val_f1, _, _, _ = get_metrics(labels_valid, preds_valid)
-
-        duration = time.time() - start_time
-
-        # Print metrics
-        print(f"Epoch {epoch + 1}/{num_epochs} - Time: {duration:.2f}s")
-        print(f"Train - Loss: {loss.item():.4f} - Acc: {train_accuracy:.4f} - F1: {train_f1:.4f}")
-        print(f"Valid - Loss: {val_loss.item():.4f} - Acc: {val_accuracy:.4f} - F1: {val_f1:.4f}")
-
-        losses.append(val_loss.item())
-        f1_scores.append(val_f1())
-        # Save best model based on F1-score
-        if val_f1 > best_f1:
-            best_f1 = val_f1
-            torch.save(model.state_dict(), best_model_path)
-            print(f"New best model saved with F1-score: {best_f1:.4f}!")
-
-    print(f"Training complete. Best model saved at: {best_model_path}")
-
-
 def visualize_loss(epochs, f1_scores, losses):
     # Plot Loss and F1-score
     plt.figure(figsize=(10, 5))
@@ -579,55 +368,99 @@ class GNN_Trainer:
                     print('Model Saved !!')
             print(f"Validation - Loss: {loss.item():.4f} - Accuracy Val: {accuracy:.4f} - F1 Score Val: {f1:.2f}")
 
-
-
-def visualize_sampled_hetero_graph(dgl_graph, sample_size=500):
+def test_dgl_model(model_path, test_g, test_features_dict, test_labels, target_node, ntype_dict, etypes, in_size_dict, hidden_size, out_size, n_layers, device):
     """
-    Visualizes a sampled subgraph of a DGL heterogeneous graph using networkx.
-
-    :param dgl_graph: The DGL heterograph.
-    :param sample_size: Number of nodes to sample for visualization.
+    Loads a trained model and evaluates it on the test dataset.
     """
-    # Randomly sample nodes per node type
-    sampled_nodes = {}
-    for ntype in dgl_graph.ntypes:
-        num_nodes = dgl_graph.num_nodes(ntype)
-        sampled_nodes[ntype] = torch.randperm(num_nodes)[:min(sample_size, num_nodes)]
+    # Initialize model (match architecture used during training)
+    model = HeteroRGCN(ntype_dict, etypes, in_size_dict, hidden_size, out_size, n_layers, target_node)
+    model.load_state_dict(torch.load(model_path, map_location=device))  # Load weights
+    model.to(device)
+    model.eval()
 
-    # Extract the sampled subgraph
-    sampled_graph = dgl.node_subgraph(dgl_graph, sampled_nodes)
+    with torch.no_grad():
+        logits = model(test_g, test_features_dict, target_node)
+        predictions = torch.argmax(logits, dim=1)
 
-    # Convert subgraph to networkx
-    nx_graph = nx.Graph()
+    # Evaluate performance
+    accuracy = (predictions == test_labels).sum().item() / len(test_labels)
+    precision = torch.tensor(precision_score(test_labels.cpu(), predictions.cpu(), average='binary'))
+    recall = torch.tensor(recall_score(test_labels.cpu(), predictions.cpu(), average='binary'))
+    f1 = torch.tensor(f1_score(test_labels.cpu(), predictions.cpu(), average='binary'))
+    roc_auc = torch.tensor(roc_auc_score(test_labels.cpu(), predictions.cpu()))
 
-    # Map node types to colors
-    color_map = {
-        'transaction': 'blue',
-        'user': 'green',
-        'merchant': 'red'
-    }
+    print(f"Test Accuracy: {accuracy:.4f}")
+    print(f"Precision: {precision:.4f}, Recall: {recall:.4f}, F1 Score: {f1:.4f}, ROC-AUC: {roc_auc:.4f}")
 
-    # Add sampled edges to networkx
-    node_type_mapping = {}
-    node_index_offset = 0
+    return predictions
 
-    for ntype in sampled_graph.ntypes:
-        num_nodes = sampled_graph.num_nodes(ntype)
-        for i in range(num_nodes):
-            node_type_mapping[node_index_offset + i] = color_map.get(ntype, 'black')
-        node_index_offset += num_nodes
 
-    for edge_type in sampled_graph.canonical_etypes:
-        src, etype, dst = edge_type
-        edges = sampled_graph.edges(etype=edge_type)
-        nx_graph.add_edges_from(zip(edges[0].numpy(), edges[1].numpy()), label=etype)
+def visualize_network_graph(data, sample_size=300):
+    """
+    Custom NetworkX visualization for PyG HeteroData graphs.
+    """
+    print(f"Visualizing a sample of {sample_size} nodes...")
 
-    # Assign colors correctly
-    node_colors = [node_type_mapping.get(n, 'black') for n in nx_graph.nodes]
+    G = nx.Graph()
 
-    # Draw the sampled graph
+    # Add nodes with type labels
+    for ntype in data.node_types:
+        for i in range(min(sample_size, data[ntype].num_nodes)):
+            G.add_node(f"{ntype}_{i}", node_type=ntype)
+
+    # Add edges for selected types
+    selected_edges = [
+        ('transaction', 'transaction_to_user', 'user'),
+        ('transaction', 'transaction_to_merchant', 'merchant')
+    ]
+
+    for src_type, rel, dst_type in selected_edges:
+        edge_index = data[src_type, rel, dst_type].edge_index
+        num_edges = edge_index.shape[1]
+
+        for i in range(min(sample_size, num_edges)):
+            src = f"{src_type}_{edge_index[0, i].item()}"
+            dst = f"{dst_type}_{edge_index[1, i].item()}"
+            G.add_edge(src, dst)
+
+    # Color by node type
+    color_map = []
+    for node, data_dict in G.nodes(data=True):
+        if data_dict['node_type'] == 'transaction':
+            color_map.append('orange')
+        elif data_dict['node_type'] == 'user':
+            color_map.append('lightblue')
+        elif data_dict['node_type'] == 'merchant':
+            color_map.append('green')
+        else:
+            color_map.append('gray')
+
+    # Draw the graph
     plt.figure(figsize=(10, 8))
-    pos = nx.spring_layout(nx_graph, seed=42)  # Layout for positioning
-    nx.draw(nx_graph, pos, with_labels=True, node_color=node_colors, edge_color="gray", node_size=100)
-    plt.title(f"Sampled Heterogeneous Graph Visualization ({sample_size} nodes)")
+    pos = nx.spring_layout(G, seed=42)
+    nx.draw(G, pos, node_color=color_map, with_labels=False, node_size=50, edge_color='gray', alpha=0.7)
+
+    # Add legend
+    legend_elements = [
+        plt.Line2D([0], [0], marker='o', color='w', label='Transaction', markerfacecolor='orange', markersize=8),
+        plt.Line2D([0], [0], marker='o', color='w', label='User', markerfacecolor='lightblue', markersize=8),
+        plt.Line2D([0], [0], marker='o', color='w', label='Merchant', markerfacecolor='green', markersize=8),
+    ]
+    plt.legend(handles=legend_elements)
+    plt.title("Sample Heterogeneous Transaction Graph")
+    plt.tight_layout()
+    plt.show()
+
+
+def generate_aucpr_plot(y_test, y_prob_dict):
+    plt.figure(figsize=(8, 6))
+    for model_name, y_prob in y_prob_dict.items():
+        if y_prob.shape[1] == 2:
+            y_prob = y_prob[:, 1]
+        precision, recall, _ = precision_recall_curve(y_test, y_prob)
+        plt.plot(recall, precision, label=f'{model_name} (AUC={average_precision_score(y_test, y_prob):.2f})')
+    plt.xlabel('Recall')
+    plt.ylabel('Precision')
+    plt.title('Precision-Recall Curve')
+    plt.legend()
     plt.show()

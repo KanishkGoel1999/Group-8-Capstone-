@@ -1,7 +1,4 @@
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import dgl.function as fn
+from component.packages import *
 
 class HeteroRGCNLayer(nn.Module):
     def __init__(self, hidden_size, out_size, etypes):
