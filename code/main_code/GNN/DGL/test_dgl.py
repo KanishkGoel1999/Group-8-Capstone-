@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import yaml
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
@@ -25,7 +26,6 @@ from component.gnn.model_dgl import *
 import warnings
 warnings.filterwarnings("ignore")
 
-data_path = '/home/ubuntu/processed_test.csv'
 
 device = torch.device('cpu')
 
@@ -34,69 +34,34 @@ m_name = "GNN"
 model_path = "models/"+f'model_{m_name}.pt'
 
 
-def generate_aucpr_plot(y_test, y_prob_dict):
-    plt.figure(figsize=(8, 6))
-    for model_name, y_prob in y_prob_dict.items():
-        if y_prob.shape[1] == 2:
-            y_prob = y_prob[:, 1]  
-        precision, recall, _ = precision_recall_curve(y_test, y_prob)
-        plt.plot(recall, precision, label=f'{model_name} (AUC={average_precision_score(y_test, y_prob):.2f})')
-    plt.xlabel('Recall')
-    plt.ylabel('Precision')
-    plt.title('Precision-Recall Curve')
-    plt.legend()
-    plt.savefig('plots/pr_curve.png')
-    plt.show()
-
-def generate_aucroc_plot(y_test, y_prob_dict):
-    plt.figure(figsize=(8, 6))
-    for model_name, y_prob in y_prob_dict.items():
-        if y_prob.shape[1] == 2:
-            y_prob = y_prob[:, 1]  
-        fpr, tpr, _ = roc_curve(y_test, y_prob)
-        plt.plot(fpr, tpr, label=f'{model_name} (AUC={roc_auc_score(y_test, y_prob):.2f})')
-    plt.xlabel('False Positive Rate')
-    plt.ylabel('True Positive Rate')
-    plt.title('ROC Curve')
-    plt.legend()
-    plt.savefig('plots/roc_curve.png')
-    plt.show()
 
 
-def test_model(model_path, test_g, test_features_dict, test_labels, target_node, ntype_dict, etypes, in_size_dict, hidden_size, out_size, n_layers):
-    """
-    Loads a trained model and evaluates it on the test dataset.
-    """
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    # Initialize model (match architecture used during training)
-    model = HeteroRGCN(ntype_dict, etypes, in_size_dict, hidden_size, out_size, n_layers, target_node)
-    model.load_state_dict(torch.load(model_path, map_location=device))  # Load weights
-    model.to(device)
-    model.eval()
-
-    with torch.no_grad():
-        logits = model(test_g, test_features_dict, target_node)
-        predictions = torch.argmax(logits, dim=1)
-
-    # Evaluate performance
-    accuracy = (predictions == test_labels).sum().item() / len(test_labels)
-    precision = torch.tensor(precision_score(test_labels.cpu(), predictions.cpu(), average='binary'))
-    recall = torch.tensor(recall_score(test_labels.cpu(), predictions.cpu(), average='binary'))
-    f1 = torch.tensor(f1_score(test_labels.cpu(), predictions.cpu(), average='binary'))
-    roc_auc = torch.tensor(roc_auc_score(test_labels.cpu(), predictions.cpu()))
-
-    print(f"Test Accuracy: {accuracy:.4f}")
-    print(f"Precision: {precision:.4f}, Recall: {recall:.4f}, F1 Score: {f1:.4f}, ROC-AUC: {roc_auc:.4f}")
-
-    return predictions
-
+def load_config(config_path="/home/ubuntu/code/component/config.yaml"):
+    with open(config_path, "r") as f:
+        config = yaml.safe_load(f)
+    return config
 
 def main():
+    config = load_config()
+
+    data_path = config["data"]["test_data_path1"]
+    data_path = os.path.join(os.path.expanduser("~"), data_path)
     df = pd.read_csv(data_path)
 
-    df = preprocess_data(df)
-    test_g, transaction_feats_test, user_feats_test, merchant_feats_test, classified_idx = create_graph_dgl(df)
+    df = preprocess_data_1(df)
+
+    transaction_feats = df[
+        ['transaction_id', 'amt', 'is_weekend', 'Month_Sin', 'Month_Cos', 'hour_sin', 'hour_cos', 'day_sin',
+         'day_cos']].drop_duplicates(
+        subset=['transaction_id'])
+    user_feats = df[
+        ['card_number', 'age', 'gender', 'lat', 'long']].drop_duplicates(subset=['card_number'])
+    merchant_feats = df[['merchant_id', 'fraud_merchant_pct', 'merch_lat', 'merch_long']].drop_duplicates(
+        subset=['merchant_id'])
+
+    test_g, transaction_feats_test, user_feats_test, merchant_feats_test, classified_idx = create_graph_dgl(df, transaction_feats,
+                                                                                        merchant_feats, user_feats)
+
 
     ntype_dict = {n_type: test_g.number_of_nodes(n_type) for n_type in test_g.ntypes}
     labels_test = test_g.nodes['transaction'].data['y'].long()
@@ -107,10 +72,10 @@ def main():
     }
 
     # Define model parameters
-    hidden_size = 32
-    out_size = 2
-    n_layers = 5
-    target_node = 'transaction'
+    hidden_size = config['gnn']['hidden_size']
+    out_size = config['gnn']['out_size']
+    n_layers = config['gnn']['n_layers']
+    target_node = config['gnn']['target_node']
     etypes = test_g.canonical_etypes
 
     features_dict_test = {
@@ -119,8 +84,8 @@ def main():
         'user': user_feats_test  # Tensor of shape (num_users, feature_dim)
     }
 
-    result = test_model(model_path, test_g, features_dict_test, labels_test, target_node, ntype_dict, etypes,
-                        in_size_dict_test, hidden_size, out_size, n_layers)
+    result = test_dgl_model(model_path, test_g, features_dict_test, labels_test, target_node, ntype_dict, etypes,
+                            in_size_dict_test, hidden_size, out_size, 5, device)
 
     return result
 
