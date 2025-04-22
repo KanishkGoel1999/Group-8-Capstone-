@@ -38,7 +38,7 @@ Each dataset is transformed into:
 | Dataset        | Model     | F1-Score | Accuracy | AUC   |
 |----------------|-----------|----------|----------|--------|
 | Stack Overflow | XGBoost   | 0.602    | 0.812    | 0.646 |
-| Stack Overflow | GNN       | 0.610    | 0.816    | 0.655 |
+| Stack Overflow | GNN       | 0.619    | 0.816    | 0.667 |
 | Reddit         | XGBoost   | 0.680    | 0.813    | 0.895 |
 | Reddit         | GNN       | 0.677    | 0.912    | 0.954 |
 
