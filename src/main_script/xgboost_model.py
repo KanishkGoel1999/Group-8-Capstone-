@@ -1,80 +1,187 @@
 # xgboost_model.py
+
+
+
+from __future__ import annotations
+
+import os
+import sys
+import yaml
+import argparse
+from dataclasses import dataclass
+from typing import Dict, Any
+
 import pandas as pd
-import numpy as np
 from sklearn.model_selection import RandomizedSearchCV
 
-import sys
-import os
+# -----------------------------------------------------------------------------
+# Local-project imports – ensure repo root is on PYTHONPATH
+# -----------------------------------------------------------------------------
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.append(REPO_ROOT)
+from components.utils import split_data, preprocess_data  # noqa: E402
+from components.metric import Metrics  # noqa: E402
+from components.model import Models  # noqa: E402
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from components.utils import (
-    split_data,
-    preprocess_data
-)
-from components.metric import Metrics
-from components.model import Models
-import yaml
+# -----------------------------------------------------------------------------
+# Dataset configuration
+# -----------------------------------------------------------------------------
+@dataclass(frozen=True)
+class DatasetConfig:
+    file_path: str
+    columns_to_remove: list[str]
+    target_column: str
+    description: str
 
-# Load dataset
-file_path = "../data/preprocessed_data.csv"
-df = pd.read_csv(file_path)
 
-# Display basic info
-print(df.info())
+DATASETS: Dict[str, DatasetConfig] = {
+    "ASK_REDDIT": DatasetConfig(
+        file_path="../data/preprocessed_reddit_data.csv",
+        columns_to_remove=["author"],
+        target_column="active",
+        description="AskReddit users labelled active vs inactive.",
+    ),
+    "STACK_OVERFLOW": DatasetConfig(
+        file_path="../data/preprocessed_stackoverflow_data.csv",
+        columns_to_remove=["user_id", "display_name"],
+        target_column="influential",
+        description="Stack Overflow users labelled influential vs non-influential.",
+    ),
+}
 
-# Preprocess data
-columns_to_remove = ["user_id", "display_name"]
-df = preprocess_data(df, columns_to_remove=columns_to_remove)
-print(df.columns)
+# -----------------------------------------------------------------------------
+# XGBoost training pipeline class
+# -----------------------------------------------------------------------------
+class XGBTrainer:
+    """Handles data loading, preprocessing, tuning, training, and evaluation."""
 
-# Prepare features and target, then split data
-X_train, X_test, y_train, y_test = split_data(df, target_column="influential")
+    def __init__(
+        self,
+        cfg: DatasetConfig,
+        set_index: int,
+        config_path: str = "../components/config.yaml",
+    ) -> None:
+        self.cfg = cfg
+        self.set_index = set_index
+        self.config_path = config_path
+        self.df: pd.DataFrame | None = None
+        self.X_train = self.X_test = self.y_train = self.y_test = None
+        self.best_model = None
 
-# Check dataset sizes
-print(f"Training set: {X_train.shape}, Test set: {X_test.shape}")
+    # ------------------------------------------------------------------
+    # Public workflow methods
+    # ------------------------------------------------------------------
+    def run_full_pipeline(self) -> None:
+        self._load_and_preprocess()
+        self._split()
+        self._tune_hyperparams()
+        self._train_final()
+        self._evaluate()
 
-# Compute scale_pos_weight for class imbalance
-neg_count = (y_train == 0).sum()
-pos_count = (y_train == 1).sum()
-scale_pos_weight = neg_count / pos_count
-print("Computed scale_pos_weight:", scale_pos_weight)
+    # ------------------------------------------------------------------
+    # Internal steps
+    # ------------------------------------------------------------------
+    def _load_and_preprocess(self) -> None:
+        if not os.path.isfile(self.cfg.file_path):
+            raise FileNotFoundError(f"Dataset not found: {self.cfg.file_path}")
 
-# Hyperparameter tuning with RandomizedSearchCV for XGBoost
-# Load hyperparameters from config.yaml
-config_path = "../components/config.yaml"
-with open(config_path, "r") as file:
-    config = yaml.safe_load(file)
+        self.df = pd.read_csv(self.cfg.file_path)
+        print(self.df.info())
+        self.df = preprocess_data(self.df, self.cfg.columns_to_remove)
+        print("Columns after preprocessing:", self.df.columns.tolist())
 
-param_dist = config["xgboost"]["sets"][1]
-param_dist['scale_pos_weight'] = [scale_pos_weight]  # using computed imbalance ratio
+    def _split(self) -> None:
+        X_train, X_test, y_train, y_test = split_data(
+            self.df, target_column=self.cfg.target_column
+        )
+        self.X_train, self.X_test = X_train, X_test
+        self.y_train, self.y_test = y_train, y_test
+        print(f"Training set: {X_train.shape}, Test set: {X_test.shape}")
 
-# Initialize XGBoost model from Models class
-xgb_model = Models.get_xgboost_model()
+    def _tune_hyperparams(self) -> None:
+        # Handle class imbalance
+        neg_count = (self.y_train == 0).sum()
+        pos_count = (self.y_train == 1).sum()
+        scale_pos_weight = neg_count / pos_count if pos_count else 1
+        print("Computed scale_pos_weight:", scale_pos_weight)
 
-# Perform RandomizedSearchCV
-random_search = RandomizedSearchCV(
-    xgb_model, param_distributions=param_dist, n_iter=20, scoring='f1',
-    cv=3, n_jobs=-1, verbose=1, random_state=42
-)
+        # Load parameter grids
+        with open(self.config_path, "r") as fh:
+            config = yaml.safe_load(fh)
 
-random_search.fit(X_train, y_train)
+        try:
+            param_dist = config["xgboost"]["sets"][self.set_index].copy()
+        except IndexError:
+            raise ValueError(
+                f"Hyper-parameter set index {self.set_index} is out of range. "
+                f"Available sets: 0-{len(config['xgboost']['sets']) - 1}"
+            )
 
-# Get the best model
-best_xgb_model = random_search.best_estimator_
+        param_dist["scale_pos_weight"] = [scale_pos_weight]
+        print("Using param grid:", param_dist)
 
-# Print best hyperparameters
-print("Best Hyperparameters:", random_search.best_params_)
+        xgb_model = Models.get_xgboost_model()
+        search = RandomizedSearchCV(
+            xgb_model,
+            param_distributions=param_dist,
+            n_iter=20,
+            scoring="f1",
+            cv=3,
+            n_jobs=-1,
+            verbose=1,
+            random_state=42,
+        )
+        search.fit(self.X_train, self.y_train)
+        print("Best hyper-parameters:", search.best_params_)
+        self.best_model = search.best_estimator_
 
-# Train best model on full training data
-best_xgb_model.fit(X_train, y_train)
+    def _train_final(self) -> None:
+        if self.best_model is None:
+            raise RuntimeError("Hyper-parameter search must be run before training.")
+        self.best_model.fit(self.X_train, self.y_train)
 
-# Make predictions on test set
-y_pred = best_xgb_model.predict(X_test)
+    def _evaluate(self) -> None:
+        y_pred = self.best_model.predict(self.X_test)
+        metrics: Dict[str, Any] = Metrics.compute_metrics(self.y_test, y_pred)
+        print("Model performance:", metrics)
+        cm = Metrics.compute_confusion_matrix(self.y_test, y_pred)
+        print("Confusion matrix:\n", cm)
 
-# Evaluate Model Performance
-metrics = Metrics.compute_metrics(y_test, y_pred)
-print("Model Performance Metrics:", metrics)
 
-# Compute and display confusion matrix
-cm = Metrics.compute_confusion_matrix(y_test, y_pred)
-print("Confusion Matrix:\n", cm)
+# -----------------------------------------------------------------------------
+# CLI entry-point
+# -----------------------------------------------------------------------------
+def _parse_cli() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Train an XGBoost model on the chosen dataset and parameter set."
+    )
+    parser.add_argument(
+        "dataset",
+        choices=DATASETS.keys(),
+        help="Dataset key (e.g., ASK_REDDIT).",
+    )
+    parser.add_argument(
+        "set_index",
+        type=int,
+        help="Index of the hyper-parameter set inside xgboost->sets in config.yaml",
+    )
+    parser.add_argument(
+        "config",
+        nargs="?",
+        default="../components/config.yaml",
+        help="Optional path to YAML with XGBoost hyper-parameter grids.",
+    )
+    return parser.parse_args()
+
+
+def main() -> None:
+    args = _parse_cli()
+    cfg = DATASETS[args.dataset]
+    print(f"\n▶ Selected dataset: {args.dataset} – {cfg.description}")
+
+    trainer = XGBTrainer(cfg, args.set_index, args.config)
+    trainer.run_full_pipeline()
+
+
+if __name__ == "__main__":
+    main()
