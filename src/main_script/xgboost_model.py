@@ -1,7 +1,5 @@
 # xgboost_model.py
 
-
-
 from __future__ import annotations
 
 import os
@@ -14,18 +12,19 @@ from typing import Dict, Any
 import pandas as pd
 from sklearn.model_selection import RandomizedSearchCV
 
-# -----------------------------------------------------------------------------
+# -------------------------------------------------------------------
 # Local-project imports – ensure repo root is on PYTHONPATH
-# -----------------------------------------------------------------------------
+# -------------------------------------------------------------------
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(REPO_ROOT)
+
 from components.utils import split_data, preprocess_data  # noqa: E402
 from components.metric import Metrics  # noqa: E402
 from components.model import Models  # noqa: E402
 
-# -----------------------------------------------------------------------------
+# -------------------------------------------------------------------
 # Dataset configuration
-# -----------------------------------------------------------------------------
+# -------------------------------------------------------------------
 @dataclass(frozen=True)
 class DatasetConfig:
     file_path: str
@@ -36,22 +35,22 @@ class DatasetConfig:
 
 DATASETS: Dict[str, DatasetConfig] = {
     "ASK_REDDIT": DatasetConfig(
-        file_path="../data/preprocessed_reddit_data.csv",
+        file_path=os.path.join(REPO_ROOT, "data", "preprocessed_reddit_data.csv"),
         columns_to_remove=["author"],
         target_column="active",
         description="AskReddit users labelled active vs inactive.",
     ),
     "STACK_OVERFLOW": DatasetConfig(
-        file_path="../data/preprocessed_stackoverflow_data.csv",
+        file_path=os.path.join(REPO_ROOT, "data", "preprocessed_stackoverflow_data.csv"),
         columns_to_remove=["user_id", "display_name"],
         target_column="influential",
         description="Stack Overflow users labelled influential vs non-influential.",
     ),
 }
 
-# -----------------------------------------------------------------------------
+# -------------------------------------------------------------------
 # XGBoost training pipeline class
-# -----------------------------------------------------------------------------
+# -------------------------------------------------------------------
 class XGBTrainer:
     """Handles data loading, preprocessing, tuning, training, and evaluation."""
 
@@ -59,7 +58,7 @@ class XGBTrainer:
         self,
         cfg: DatasetConfig,
         set_index: int,
-        config_path: str = "../components/config.yaml",
+        config_path: str = os.path.join(REPO_ROOT, "components", "config.yaml"),
     ) -> None:
         self.cfg = cfg
         self.set_index = set_index
@@ -68,9 +67,9 @@ class XGBTrainer:
         self.X_train = self.X_test = self.y_train = self.y_test = None
         self.best_model = None
 
-    # ------------------------------------------------------------------
+    # --------------------------------------------------------------
     # Public workflow methods
-    # ------------------------------------------------------------------
+    # --------------------------------------------------------------
     def run_full_pipeline(self) -> None:
         self._load_and_preprocess()
         self._split()
@@ -78,9 +77,9 @@ class XGBTrainer:
         self._train_final()
         self._evaluate()
 
-    # ------------------------------------------------------------------
+    # --------------------------------------------------------------
     # Internal steps
-    # ------------------------------------------------------------------
+    # --------------------------------------------------------------
     def _load_and_preprocess(self) -> None:
         if not os.path.isfile(self.cfg.file_path):
             raise FileNotFoundError(f"Dataset not found: {self.cfg.file_path}")
@@ -143,14 +142,24 @@ class XGBTrainer:
     def _evaluate(self) -> None:
         y_pred = self.best_model.predict(self.X_test)
         metrics: Dict[str, Any] = Metrics.compute_metrics(self.y_test, y_pred)
-        print("Model performance:", metrics)
-        cm = Metrics.compute_confusion_matrix(self.y_test, y_pred)
-        print("Confusion matrix:\n", cm)
+
+        # Calculate loss
+        loss = 1.0 - metrics["accuracy"]
+
+        # Neatly display metrics
+        print("\nTest Performance Metrics")
+        print(f"Recall:    {metrics['recall']:.3f}")
+        print(f"Precision: {metrics['precision']:.3f}")
+        print(f"F1_score:  {metrics['f1_score']:.3f}")
+        print(f"Accuracy:  {metrics['accuracy']:.3f}")
+        print(f"AUC:       {metrics['auc']:.3f}")
+        print(f"Loss:      {loss:.3f}")
 
 
-# -----------------------------------------------------------------------------
+
+# -------------------------------------------------------------------
 # CLI entry-point
-# -----------------------------------------------------------------------------
+# -------------------------------------------------------------------
 def _parse_cli() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Train an XGBoost model on the chosen dataset and parameter set."
@@ -168,7 +177,7 @@ def _parse_cli() -> argparse.Namespace:
     parser.add_argument(
         "config",
         nargs="?",
-        default="../components/config.yaml",
+        default=os.path.join(REPO_ROOT, "components", "config.yaml"),
         help="Optional path to YAML with XGBoost hyper-parameter grids.",
     )
     return parser.parse_args()
