@@ -31,7 +31,8 @@ class Trainer:
         os.makedirs(self.artifact_dir, exist_ok=True)
 
     def load_dataset(self):
-        path = "StackOverflow_hetero_graph.pt" if self.dataset_name == DATASET_TYPE_1 else "reddit_hetero_graph.pt"
+        filename = "StackOverflow_hetero_graph.pt" if self.dataset_name == DATASET_TYPE_1 else "reddit_hetero_graph.pt"
+        path = os.path.join(self.artifact_dir, filename)
         self.dataset = torch.load(path, weights_only=False)
 
     def preprocess(self):
@@ -39,6 +40,8 @@ class Trainer:
         self.data = transform(self.dataset).to(self.device)
         self._add_reverse_edges()
         self.in_channels_dict = get_in_channels(self.dataset_name, self.data)
+        # save split train/val/test
+        torch.save(self.data, os.path.join(self.artifact_dir, f"dataset_split_{self.dataset_name}.pt"))
         self.model = Models.get_hetero_model(
             self.dataset_name,
             self.in_channels_dict,
@@ -108,34 +111,42 @@ class Trainer:
 
     def train(self):
         train_loaders = self.create_loader()
-        losses, accuracies = [], []
+        losses, accuracies, aucs, precisions = [], [], [], []
 
         for epoch in range(1, self.config["num_epochs"] + 1):
             self.model.train()
-            total_loss, total_acc = 0, 0
+            total_loss, total_acc, total_auc, total_prec = 0, 0, 0, 0
 
             for loader in train_loaders:
-                loss, acc = train_mini_batch(self.model, loader, self.optimizer, self.dataset_name)
+                loss, acc, auc, prec = train_mini_batch(self.model, loader, self.optimizer, self.dataset_name)
                 total_loss += loss
                 total_acc += acc
+                total_auc += auc
+                total_prec += prec
 
             epoch_loss = total_loss / len(train_loaders)
             epoch_acc = total_acc / len(train_loaders)
+            epoch_auc = total_auc / len(train_loaders)
+            epoch_prec = total_prec / len(train_loaders)
             losses.append(epoch_loss)
             accuracies.append(epoch_acc)
+            aucs.append(epoch_auc)
+            precisions.append(epoch_prec)
 
-            print(f"Epoch {epoch:03d} - Loss: {epoch_loss:.4f} - Acc: {epoch_acc:.4f}")
-        return losses, accuracies
+            print(f"Epoch {epoch:03d} - Loss: {epoch_loss:.4f} - Acc: {epoch_acc:.4f} - AUC: {aucs[-1]:.4f} - Precision: {precisions[-1]:.4f}")
+        return losses, accuracies, aucs, precisions
 
-    def save_artifacts(self, losses, accuracies):
+    def save_artifacts(self, losses, accuracies, aucs, precisions):
         torch.save(self.model.state_dict(), os.path.join(self.artifact_dir, f"gnn_model_{self.dataset_name}.pth"))
-        torch.save(self.data, os.path.join(self.artifact_dir, f"dataset_graph_{self.dataset_name}.pt"))
+        
         with open(os.path.join(self.artifact_dir, f"train_metrics_{self.dataset_name}.pkl"), "wb") as f:
             pickle.dump({
                 "train_losses": losses,
-                "train_accuracies": accuracies
+                "train_accuracies": accuracies,
+                "train_aucs": aucs,
+                "train_precisions": precisions
             }, f)
-        print("✅ Model, data, and metrics saved!")
+        print("Model, data, and metrics saved!!!")
 
 if __name__ == "__main__":
     args = parse_args()
@@ -143,5 +154,5 @@ if __name__ == "__main__":
     trainer.load_dataset()
     trainer.preprocess()
     print("----- Starting Training -----")
-    losses, accuracies = trainer.train()
-    trainer.save_artifacts(losses, accuracies)
+    losses, accuracies, aucs, precisions = trainer.train()
+    trainer.save_artifacts(losses, accuracies, aucs, precisions)

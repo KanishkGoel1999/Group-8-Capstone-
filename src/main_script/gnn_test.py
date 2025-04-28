@@ -24,12 +24,13 @@ class GNNTester:
         self.artifact_dir = os.path.join(os.path.dirname(__file__), "..", "model_artifacts")
         self.data = self._load_data()
         self.config = read_yaml(config_index)
+        print(self.config)
         self.in_channels_dict = get_in_channels(dataset_name, self.data)
         self.model = self._load_model()
         self.test_loader = self._create_loader()
 
     def _load_data(self):
-        path = os.path.join(self.artifact_dir, f"dataset_graph_{self.dataset_name}.pt")
+        path = os.path.join(self.artifact_dir, f"dataset_split_{self.dataset_name}.pt")
         return torch.load(path, weights_only=False).to(self.device)
 
     def _load_model(self):
@@ -58,7 +59,9 @@ class GNNTester:
         with open(os.path.join(self.artifact_dir, f"test_metrics_{self.dataset_name}.pkl"), "wb") as f:
             pickle.dump({
                 "test_losses": [metrics["loss"]],
-                "test_accuracies": [metrics["accuracy"]]
+                "test_accuracies": [metrics["accuracy"]],
+                "test_auc": [metrics["auc"]],
+                "test_precision": [metrics["precision"]],
             }, f)
 
         print("\nTest Performance Metrics")
