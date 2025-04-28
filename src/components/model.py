@@ -11,13 +11,13 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from components.constants import EDGE_TYPES, NODE_TYPES, DATASET_TYPE_1
 
 # Define the path to the config file (same folder as model.py)
-config_path = os.path.join(os.path.dirname(__file__), "config.yaml")
+# config_path = os.path.join(os.path.dirname(__file__), "config.yaml")
 
 # Load the YAML configuration
-with open(config_path, "r") as file:
-    config = yaml.safe_load(file)
-gnn_config = config["gnn"]["sets"][1]  # change index for different configurations
-xgb_config = config["xgboost"]["sets"][0]  # change index for different configurations
+# with open(config_path, "r") as file:
+#     config = yaml.safe_load(file)
+# gnn_config = config["gnn"]["sets"][1]  # change index for different configurations
+# xgb_config = config["xgboost"]["sets"][0]  # change index for different configurations
 
 class SAGE(torch.nn.Module):
     def __init__(self, in_channels, hidden_channels, out_channels):

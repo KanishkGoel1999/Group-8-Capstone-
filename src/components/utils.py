@@ -101,6 +101,8 @@ def train_mini_batch(model, train_loader, optimizer, dataset_name):
     total_loss = 0
     correct = 0
     total_samples = 0
+    all_preds = []
+    all_labels = []
 
     # Determine node type dynamically
     target_node = "user" if dataset_name == DATASET_TYPE_1 else "author"
@@ -128,13 +130,20 @@ def train_mini_batch(model, train_loader, optimizer, dataset_name):
 
         # Accuracy
         preds = y_pred.argmax(dim=-1)
+        all_preds.append(preds.cpu())
+        all_labels.append(y_true.cpu())
+
         correct += (preds == y_true).sum().item()
         total_samples += y_true.size(0)
 
     avg_loss = total_loss / len(train_loader)
     accuracy = correct / total_samples
 
-    return avg_loss, accuracy
+    all_preds = torch.cat(all_preds, dim=0).numpy()
+    all_labels = torch.cat(all_labels, dim=0).numpy()
+    metrics = Metrics.compute_metrics(all_labels, all_preds)
+
+    return avg_loss, accuracy, metrics['auc'], metrics['precision']
 
 @torch.no_grad()
 def test_mini_batch(model, test_loader, dataset_name):

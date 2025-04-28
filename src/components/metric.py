@@ -20,9 +20,9 @@ class Metrics:
             dict: Dictionary containing all computed metrics.
         """
         return {
-            "recall": recall_score(y_true, y_pred, average='macro'),
-            "precision": precision_score(y_true, y_pred, average='macro'),
-            "f1_score": f1_score(y_true, y_pred, average='macro'),
+            "recall": recall_score(y_true, y_pred, average='macro', zero_division=0),
+            "precision": precision_score(y_true, y_pred, average='macro', zero_division=0),
+            "f1_score": f1_score(y_true, y_pred, average='macro', zero_division=0),
             "accuracy": accuracy_score(y_true, y_pred),
             "auc": roc_auc_score(y_true, y_pred, average='macro')
         }
