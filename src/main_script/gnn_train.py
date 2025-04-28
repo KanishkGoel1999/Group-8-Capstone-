@@ -76,12 +76,12 @@ class Trainer:
     def stratified_batches(self):
         labels = self.data[self.target_node]["y"]
         mask = self.data[self.target_node]["train_mask"]
-        node_indices = torch.arange(self.data[self.target_node].num_nodes)[mask]
+        node_indices = torch.arange(self.data[self.target_node].num_nodes,device=mask.device)[mask]
 
         class_indices = {}
         for cls in labels[node_indices].unique():
             idx = node_indices[labels[node_indices] == cls]
-            class_indices[int(cls)] = idx[torch.randperm(len(idx))]
+            class_indices[int(cls)] = idx[torch.randperm(len(idx), device=idx.device)]
 
         num_classes = len(class_indices)
         samples_per_class = self.config["batch_size"] // num_classes
