@@ -5,17 +5,15 @@ The `shikha` and `harsha` branches have been merged into the main branch.
 - GNN for Finance
 The `kanishk` branch contains the GNN for Finance project.
 
-# 🚧 Project In Progress: Identifying Influential Users Using Classical Models and Graph Neural Networks
-
-> ⚠️ This project is currently under active development. Final model comparisons, visualizations, and documentation are subject to change.
+# Reimagining Influence Detection in Social Networks via Graph Neural Networks
 
 ---
 
-## 🧠 Objective
+## Objective
 
 To evaluate the effectiveness of graph-based learning (GNNs) over traditional tabular models (XGBoost) in classifying users based on their influence or activity, leveraging structured and relational information from Q&A and discussion forums.
 
-## 📊 Datasets
+## Datasets
 
 - **Stack Overflow**: Extracted using the Stack Exchange API. Includes users, questions, and answers.
 - **AskReddit (Reddit)**: Sourced from Kaggle’s “A Month of AskReddit” dataset.
@@ -24,7 +22,7 @@ Each dataset is transformed into:
 - A tabular format for XGBoost.
 - A heterogeneous graph format for GNNs.
 
-## 🔍 Key Components
+## Key Components
 
 - **Data Preprocessing**: Cleaning, labeling, and feature extraction.
 - **Graph Construction**: Building heterogeneous graphs with user-question-answer (Stack Overflow) and user-post-comment (Reddit) relationships.
@@ -33,7 +31,21 @@ Each dataset is transformed into:
   - GNN using GraphSAGE with message passing over multi-typed edges.
 - **Imbalance Handling**: Custom stratified mini-batching technique for class-balanced training.
 
-## 📈 Results Summary
+## To run this file:
+1. please make sure to have python version `3.10.12`
+2. `pip install requirements.txt`
+3. Download datasets from GCP/AWS in data folder. #TODO
+For running the below commands, please ensure you are inside main_script folder.
+4. Once downloaded, run `python graph_construction.py` - This commands constructs graph for both the datasets.
+5. Run `python gnn_train.py "STACK_OVERFLOW 1"` - For Stack Overflow data with config set `1` - Saves the splitted data, trains, and saves the model into  `model_artifact` folder.
+6. Run `python gnn_test.py "STACK_OVERFLOW 1"` - For Stack Overflow data with config set `1`(same config set). - Loads the saved model and data split from `model_artifact` and gives performance metrics on test dataset.
+7. Run `python performance_visualization.py "STACK_OVERFLOW"`
+Likewise, run for `AskReddit`
+5. Run `python gnn_train.py "STACK_OVERFLOW 1"` - For Stack Overflow data with config set `1`
+6. Run `python gnn_test.py "STACK_OVERFLOW 1"` - For Stack Overflow data with config set `1`(same config set).
+7. Run `python performance_visualization.py "STACK_OVERFLOW"`
+
+## Results Summary
 
 | Dataset        | Model     | F1-Score | Accuracy | AUC   |
 |----------------|-----------|----------|----------|--------|
@@ -42,7 +54,7 @@ Each dataset is transformed into:
 | Reddit         | XGBoost   | 0.680    | 0.813    | 0.895 |
 | Reddit         | GNN       | 0.677    | 0.912    | 0.954 |
 
-## 🛠️ Technologies Used
+## Technologies Used
 
 - Ronin Virtual Machine
 - Python, PyTorch Geometric
@@ -50,7 +62,7 @@ Each dataset is transformed into:
 - NetworkX / DGL for preprocessing
 - LaTeX for documentation
 
-## 📄 Output
+## Output
 
 The final report (PDF) includes:
 - Dataset statistics
@@ -59,7 +71,7 @@ The final report (PDF) includes:
 - Performance evaluation
 - Discussion and conclusion
 
-## 👥 Authors
+## Authors
 
 - Shikha Kumari 
 - Harshavardana Reddy Kolan   
