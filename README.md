@@ -32,15 +32,17 @@ Each dataset is transformed into:
 - **Imbalance Handling**: Custom stratified mini-batching technique for class-balanced training.
 
 ## To run this file:
-1. please make sure to have python version `3.10.12`
+1. Please make sure to have python version `3.10.12`
 2. `pip install requirements.txt`
 3. Download datasets from GCP/AWS in data folder. #TODO
-For running the below commands, please ensure you are inside main_script folder.
+
+- For running the below commands, please ensure you are inside main_script folder.
 4. Once downloaded, run `python graph_construction.py` - This commands constructs graph for both the datasets.
 5. Run `python gnn_train.py "STACK_OVERFLOW 1"` - For Stack Overflow data with config set `1` - Saves the splitted data, trains, and saves the model into  `model_artifact` folder.
 6. Run `python gnn_test.py "STACK_OVERFLOW 1"` - For Stack Overflow data with config set `1`(same config set). - Loads the saved model and data split from `model_artifact` and gives performance metrics on test dataset.
 7. Run `python performance_visualization.py "STACK_OVERFLOW"`
-Likewise, run for `AskReddit`
+
+- Likewise, run for `AskReddit`
 5. Run `python gnn_train.py "STACK_OVERFLOW 1"` - For Stack Overflow data with config set `1`
 6. Run `python gnn_test.py "STACK_OVERFLOW 1"` - For Stack Overflow data with config set `1`(same config set).
 7. Run `python performance_visualization.py "STACK_OVERFLOW"`
