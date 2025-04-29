@@ -37,19 +37,19 @@ Each dataset is transformed into:
 3. Download datasets from GCP/AWS in data folder. #TODO
 
 - For running the below commands, please ensure you are inside main_script folder.
-4. Run `python xgboost_model.py "ASK_REDDIT 1"`
-5. Run `python xgboost_model.py "STACK_OVERFLOW 1"`
+4. Run `python xgboost_model.py "ASK_REDDIT" 1`
+5. Run `python xgboost_model.py "STACK_OVERFLOW" 1`
 
-- Below commands are for gnn (both datasets)
-6. Once downloaded, run `python graph_construction.py` - This commands constructs graph for both the datasets.
-7. Run `python gnn_train.py "STACK_OVERFLOW 1"` - For Stack Overflow data with config set `1` - Saves the splitted data, trains, and saves the model into  `model_artifact` folder.
-8. Run `python gnn_test.py "STACK_OVERFLOW 1"` - For Stack Overflow data with config set `1`(same config set). - Loads the saved model and data split from `model_artifact` and gives performance metrics on test dataset.
+- For testing GNN (for both datasets)
+6. Run `python gnn_test.py "STACK_OVERFLOW" 1` - For Stack Overflow data with config set `1`(same config set). - Loads the saved model and data split from `model_artifact` and gives performance metrics on test dataset.
+7. Run `python gnn_test.py "ASK_REDDIT" 1` - For Stack Overflow data with config set `1`(same config set).
 
-- Likewise, run for `AskReddit`
-7. Run `python gnn_train.py "ASK_REDDIT 1"` - For Stack Overflow data with config set `1`
-8. Run `python gnn_test.py "ASK_REDDIT 1"` - For Stack Overflow data with config set `1`(same config set).
+- Below commands are for training gnn (both datasets)
+8. Once downloaded, run `python graph_construction.py` - This commands constructs graph for both the datasets.
+9. Run `python gnn_train.py "STACK_OVERFLOW" 1` - For Stack Overflow data with config set `1` - Saves the splitted data, trains, and saves the model into  `model_artifact` folder.
+10. Run `python gnn_train.py "ASK_REDDIT" 1` - For Stack Overflow data with config set `1`
 
-- Once test_metrics are generated, and saved
+- Once test_metrics are generated for GNN, and saved
 7. Run `python performance_visualization.py`
 
 ## Results Summary
