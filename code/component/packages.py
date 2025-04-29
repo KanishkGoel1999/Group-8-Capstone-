@@ -32,3 +32,5 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 from xgboost import XGBClassifier
 import pickle
+import dgl.function as fn
+from torch_geometric.nn import HeteroConv, SAGEConv, Linear
