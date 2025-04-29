@@ -6,6 +6,8 @@ from component.packages import *
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 warnings.filterwarnings("ignore")
 
+save_dir = os.path.join(os.path.dirname(__file__), "output")
+os.makedirs(save_dir, exist_ok=True)
 
 def load_config(config_path="/home/ubuntu/code/component/config.yaml"):
     with open(config_path, "r") as f:
