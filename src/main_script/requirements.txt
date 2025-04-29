@@ -1,14 +1,7 @@
-# point pip at the PyG wheels for torch 2.4.1+cu121
---find-links https://data.pyg.org/whl/torch-2.4.1+cu121.html
-
 # Core ML frameworks
 torch==2.4.1
 torchvision==0.19.1
 torchaudio==2.4.1
-
-# PyG dependencies (must match your torch+CUDA combo)
-
-pyg-lib==0.4.0+pt24cu121
 torch-geometric==2.6.1
 
 # Data & metrics
