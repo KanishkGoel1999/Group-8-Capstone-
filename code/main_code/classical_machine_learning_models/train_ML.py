@@ -1,27 +1,10 @@
-# train_models.py
 import sys
 
 import yaml
 
 sys.path.append('../../component')
 
-import os
-import argparse
-import prettytable
-import argparse
-import xgboost as xgb
-import pickle
-import sys
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, average_precision_score
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.linear_model import LogisticRegression
-from xgboost import XGBClassifier
-import pandas as pd
-import numpy as np
-import torch
-
+from component.packages import *
 from component.preprocess import *
 from component.classical_machine_learning_models.utils import *
 
