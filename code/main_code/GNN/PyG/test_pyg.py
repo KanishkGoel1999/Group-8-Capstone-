@@ -13,6 +13,8 @@ warnings.filterwarnings("ignore")
 # Set device as cpu
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+save_dir = os.path.join(os.path.dirname(__file__), "output")
+os.makedirs(save_dir, exist_ok=True)
 
 m_name = "GNN"
 
@@ -128,7 +130,7 @@ def evaluate():
 
     y_prob_dict = {"HeteroGNN": probs.cpu().numpy()}  # dict of model_name -> probability array
     generate_aucpr_plot(labels, y_prob_dict)
-    visualize_network_graph(data, sample_size=1000)
+    visualize_network_graph(data, sample_size=700)
 
 
 if __name__ == "__main__":
