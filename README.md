@@ -31,29 +31,84 @@ Each dataset is transformed into:
   - GNN using GraphSAGE with message passing over multi-typed edges.
 - **Imbalance Handling**: Custom stratified mini-batching technique for class-balanced training.
 
+Run the following command to clone the repository:
+   ```bash
+   git clone https://github.com/KanishkGoel1999/Group-8-Capstone-.git
+   ```
+Navigate to the cloned repository:
+   ```bash
+   cd Group-8-Capstone-
+   ```
+
+### Setting Up the Environment
+Create a virtual environment (optional but recommended):
+   ```bash
+   python -m venv venv
+   ```
+Activate the virtual environment:
+
+   ```bash
+     venv\Scripts\activate
+  ```
 ## To run this file:
 1. Please make sure to have python version `3.10.12`
 - For running the below commands, please ensure you are inside main_script folder.
-`cd main_script`
-2. `pip install requirements.txt`
-3. Download datasets from GCP/AWS in data folder and models and split to `model_artifact` folder using the command:
-`python s3_downloader.py`
+```bash
+cd main_script
+```
+2. Install the required packages using the command:
+```bash
+pip install requirements.txt
+```
+3. Download datasets from GCP/AWS in `data` folder and models and split to `model_artifacts` folder using the command:
+```bash
+python s3_downloader.py
+```
 
 
-4. Run `python xgboost_model.py "ASK_REDDIT" 1`
-5. Run `python xgboost_model.py "STACK_OVERFLOW" 1`
+4. Run the following commands to train and test the XGBoost model:
+```bash 
+python xgboost_model.py "ASK_REDDIT" 1
+```
+5. Run 
+```bash
+python xgboost_model.py "STACK_OVERFLOW" 1
+```
 
 - For testing GNN (for both datasets)
-6. Run `python gnn_test.py "STACK_OVERFLOW" 1` - For Stack Overflow data with config set `1`(same config set). - Loads the saved model and data split from `model_artifact` and gives performance metrics on test dataset.
-7. Run `python gnn_test.py "ASK_REDDIT" 1` - For Stack Overflow data with config set `1`(same config set).
+6. Run
+```bash 
+python gnn_test.py "STACK_OVERFLOW" 1
+```
+- For Stack Overflow data with config set `1`(same config set). - Loads the saved model and data split from `model_artifact` and gives performance metrics on test dataset.
+7. Run 
+```bash
+python gnn_test.py "ASK_REDDIT" 1
+```
+ - For Stack Overflow data with config set `1`(same config set).
 
 - Below commands are for training gnn (both datasets)
-8. Once downloaded, run `python graph_construction.py` - This commands constructs graph for both the datasets.
-9. Run `python gnn_train.py "STACK_OVERFLOW" 1` - For Stack Overflow data with config set `1` - Saves the splitted data, trains, and saves the model into  `model_artifact` folder.
-10. Run `python gnn_train.py "ASK_REDDIT" 1` - For Stack Overflow data with config set `1`
+8. Once the data is downloaded, run 
+```bash
+python graph_construction.py
+```
+ - This commands constructs graph for both the datasets.
+9. Run 
+```bash
+python gnn_train.py "STACK_OVERFLOW" 1
+```
+ - For Stack Overflow data with config set `1` - Saves the splitted data, trains, and saves the model into  `model_artifact` folder.
+10. Run
+```bash 
+python gnn_train.py "ASK_REDDIT" 1
+```
+ - For Stack Overflow data with config set `1`
 
 - Once test_metrics are generated for GNN, and saved
-7. Run `python performance_visualization.py`
+7. Run to visualize the performance of the models:
+```bash 
+python performance_visualization.py
+```
 
 ## Results Summary
 
