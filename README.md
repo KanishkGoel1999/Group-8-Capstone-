@@ -54,6 +54,9 @@ Activate the virtual environment:
 1. Please make sure to have python version `3.10.12`
 - For running the below commands, please ensure you are inside main_script folder.
 ```bash
+cd src
+```
+```bash
 cd main_script
 ```
 2. Install the required packages using the command:
