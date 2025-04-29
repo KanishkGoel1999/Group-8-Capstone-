@@ -14,59 +14,24 @@ The directory is structured as follows:
 │   │   │   ├── model_pytorch.py
 │   │   │   └── utils.py
 │   │   ├── config.yaml
+│   │   ├── packages.py
 │   │   └── preprocess.py
 │   └── main_code
 │       ├── classical_machine_learning_models
 │       │   ├── models
 │       │   ├── train_ML.py
-│       │   ├── test_ML.py
-│       │   └── Xgboost_train.py
-│       └── gnn
+│       │   └── test_ML.py
+│       └── GNN
 │           ├── DGL
+│           │   ├── models
 │           │   ├── test_dgl.py
 │           │   └── train_dgl.py
-│           ├── PyG
-│           │   ├── test_pyg.py
-│           │   └── train_pyg.py
-│           └── Inference.py
+│           └── PyG
+│               ├── models
+│               ├── test_pyg.py
+│               └── train_pyg.py
+
 ```
-
-The code directory is organized into the following subdirectories:
-
-- `component`: Contains utility files and helper functions for different model types.
-  - `classical_machine_learning_models`: Utility functions for classical machine learning models.
-    - `utils.py`: Utility functions for classical machine learning.
-  - `gnn`: Utility files for Graph Neural Network (GNN) models.
-    - `model.py`: GNN model architecture.
-    - `utils.py`: Utility functions for GNN.
-  - `preprocess.py`: Data preprocessing functions.
-
-- `main_code`: Contains the main training and inference scripts for different models.
-  - `classical_machine_learning`: Classical machine learning models.
-    - `models`: Trained classical machine learning models.
-    - `CatBoost_train.py`: Training script for CatBoost model.
-    - `Inference.py`: Inference script for classical machine learning models.
-    - `LightGBM_train.py`: Training script for LightGBM model.
-    - `Logistic_train.py`: Training script for Logistic Regression model.
-    - `Random_Forest_train.py`: Training script for Random Forest model.
-    - `SVM_train.py`: Training script for Support Vector Machine (SVM) model.
-    - `Xgboost_train.py`: Training script for XGBoost model.
-  - `deep_learning`: Deep learning models.
-    - `models`: Trained deep learning models.
-    - `plots`: Plots generated during training and evaluation.
-    - `CNN_LSTM_Test.py`: Testing script for CNN-LSTM model.
-    - `CNN_LSTM_Train.py`: Training script for CNN-LSTM model.
-    - `CNN_Test.py`: Testing script for CNN model.
-    - `CNN_Train.py`: Training script for CNN model.
-    - `Inference.py`: Inference script for deep learning models.
-    - `LSTM_Test.py`: Testing script for LSTM model.
-    - `LSTM_Train.py`: Training script for LSTM model.
-  - `gnn`: Graph Neural Network (GNN) models.
-    - `models`: Trained GNN models.
-    - `plots`: Plots generated during training and evaluation.
-    - `GNN_Train.py`: Training script for GNN model.
-    - `Inference.py`: Inference script for GNN model.
-
 
 ## Usage
 
