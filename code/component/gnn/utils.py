@@ -449,6 +449,7 @@ def visualize_network_graph(data, sample_size=300):
     plt.legend(handles=legend_elements)
     plt.title("Sample Heterogeneous Transaction Graph")
     plt.tight_layout()
+    plt.savefig("output/Graph DS2.pdf", format='pdf', dpi=600, bbox_inches='tight')
     plt.show()
 
 
@@ -463,4 +464,5 @@ def generate_aucpr_plot(y_test, y_prob_dict):
     plt.ylabel('Precision')
     plt.title('Precision-Recall Curve')
     plt.legend()
+    plt.savefig("output/AUCPR GNN DS2.pdf", format='pdf', dpi=600, bbox_inches='tight')
     plt.show()
