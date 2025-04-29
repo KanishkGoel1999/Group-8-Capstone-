@@ -1,76 +1,159 @@
 
-# Capstone Proposal Group 8
+# Capstone Project
 ## Graph Neural Network (PyG)
-### Proposed by: Dr. Amir Jafari
-#### Email: ajafari@gwu.edu
-#### Advisor: Amir Jafari
+#### Author: Kanishk Goel
+#### Advisor: Dr Amir Jafari
 #### The George Washington University, Washington DC  
 #### Data Science Program
 
+---
 
-## 1 Objective:  
- 
-            PyG (PyTorch Geometric) is a library built upon PyTorch to easily write and train Graph Neural Networks 
-            (GNNs) for a wide range of applications related to structured data. It consists of various methods for deep
-            learning on graphs and other irregular structures, also known as geometric deep learning (https://pyg.org/blogs-and-tutorials). 
-            The goal of this project is to use PyG package on synthetic data and then work on a real time data (financial 
-            and social network domain). We plan to cover four types: Node Classification, Link Prediction, Graph Prediction, 
-            and Graph Generation.  Finally,  we will find a set of data that fits the application and compare it with 
-            deep learning methods and develop a comparative study of the GNN and Deep Learning techniques.
-            
+# Unmasking Fraud in Transaction Networks: Harnessing Heterogeneous Graph Neural Networks for Enhanced Detection
 
-![Figure 1: Example figure](2025_Spring_2.png)
-*Figure 1: Caption*
+---
 
-## 2 Dataset:  
+## Abstract
 
-            The publicly available data for each application needs to be find in Kaggle Dataset or any source of data. We will use synthetic data that fits GNN. We are planning to get a real time dataset for comparison.
-            
+Credit card fraud pose a significant threat to global financial systems. They lose billions of dollars annually. Traditional machine learning techniques such as Random Forests and XGBoost have demonstrated effectiveness in fraud detection. However, they often fail to capture the complex interdependencies among entities involved in transactions. This paper explores the efficacy of Graph Neural Networks motivated by recent advances in graph-based learning. We focus on Heterogeneous Graph Convolutional Networks for enhanced credit card fraud detection.
 
-## 3 Rationale:  
+We conduct a comparative study between classical ML models and GNNs using a synthetically generated credit card transaction dataset. Over one million records simulate interactions between customers, merchants, and transactions. The graph-based structure these entities as distinct node types connected by meaningful edges. We implement the GNN framework using PyTorch Geometric and evaluate the models using the F1-score to account for class imbalance.
 
-            This project is going to help machine learning and deeplearning researches to understand GNN by comparing it
-            with other available methods. 
+Experimental results demonstrate that GNNs outperform traditional ML classifiers by leveraging relational information and neighbourhood context. They detect fraudulent patterns, especially when we have more embeddings and fewer meaningful features. This work reinforces the potential of graph-based learning as a powerful approach for high-volume and relationally rich transaction networks.
 
-            
+---
 
-## 4 Approach:  
+## Dataset
 
-            I plan on approaching this capstone through several steps.  
-            
-            1. Design folder structure for the repo GNN.
-            2. Create a basic GNN code (basic code: Data loaders, models)
-            3. Create modular and reusable codes. 
-            4. Work on specific application (any of applications which is mentioned).
-            5. Create a tutorial and slides for the specific GNN.
-            6. Use external dataset and compare results with DL models.
-            7. Write a journal paper.
-            8. Create a documentation for each application with slides, basic codes and final application training code.
-            
+The dataset used in this project is a **synthetic credit card fraud detection dataset** provided by Sparkov.
 
-## 5 Timeline:  
+- ~2 million transaction records
+- Only 0.1% of the transactions are fraudulent
 
-            This a rough time line for this project:  
-            
-            - (1 Weeks) Create folder structure.  
-            - (3 Weeks) Basic GNN code and documentation 
-            - (1 Weeks) Modular reusable class and functions.  
-            - (1 Weeks) Pick and application and do a literature review.
-            - (2 Weeks) Tutorial and slides for specific application
-            - (3 Weeks) Find external dataset and train the network (comparative study)
-            - (2 Weeks) Expand the GNN through different set of data and show the power of GNN.
-            - (2 Weeks) Write a paper.
-              
-            
+Follow Readme in code folder to get data.
 
-## 6 Possible Issues:  
+---
 
-            The challenge is understanding the GNN in great details. Solve realworld problem and create through examples
-            that it shows the power of GNN. 
-            
+## Models Implemented
+
+This project evaluates the following models:
+
+- **Graph Neural Networks:**
+  - Relational Graph Convolution Network (R-GCN)
+  
+- **Classical Machine Learning Models:**
+  - Logistic Regression
+  - Decision Trees
+  - Random Forest
+  - XGBoost
+  
+
+Each model is trained and evaluated using techniques and metrics tailored for fraud detection tasks (such as Precision-Recall AUC, F1 Score).
+
+---
+
+## Installation
+
+To set up the project environment:
+
+1. **Clone the Repository:**
+   ```bash
+   git clone https://github.com/KanishkGoel1999/Capstone_project_Kanishk_Goel.git
+   cd Capstone_project_Kanishk_Goel
+   ```
+
+2. **Install Required Dependencies:**
+   ```bash
+   pip install -r code/requirements.txt
+   ```
+
+---
+
+## Usage
+
+The project provides scripts for preprocessing, training, and evaluating different models.  
+Here’s how to use them:
 
 
-## Contact
-- Author: Amir Jafari
-- Email: [ajafari@gmail.com](Eamil)
-- GitHub: [https://github.com/amir-jafari/Capstone](Git Hub rep)
+### Train Classical Machine Learning Models
+```bash
+python code/main_code/classical_model/train_ML.py
+```
+
+### Train GNN Models
+
+- **Using DGL:**
+  ```bash
+  python code/main_code/gnn/DGL/train_dgl.py
+  ```
+
+- **Using PyG:**
+  ```bash
+  python code/main_code/gnn/PyG/train_pyg.py
+  ```
+
+### Test Models (with already trained/pretrained models)
+
+- Download pretrained models from: [Download Link Placeholder]  
+- Place models into:
+  - `code/main_code/gnn/DGL/models/` for DGL models
+  - `code/main_code/gnn/PyG/models/` for PyG models
+  
+Then run:
+
+- **Classical Models:**
+  ```bash
+  python code/main_code/classical_model/test_ML.py
+  ```
+
+- **GNN DGL Models:**
+  ```bash
+  python code/main_code/gnn/DGL/test_dgl.py
+  ```
+
+- **GNN PyG Models:**
+  ```bash
+  python code/main_code/gnn/PyG/test_pyg.py
+  ```
+
+---
+
+## Files Overview
+
+The `code/` folder contains two main subfolders:
+
+### 1. components/
+
+Reusable code modules:
+- Utility functions for classical models (`classical_model/utils/`)
+- GNN utilities and model definitions (`gnn/utils/` and `gnn/model/`)
+- Configuration files (`config/`)
+- Preprocessing scripts (`preprocessing.py`)
+- Package installation script (`packages.py`)
+
+### 2. main_code/
+
+Main scripts to train, test, and evaluate models:
+- **classical_model/**:  
+  Train and test classical machine learning models.
+- **gnn/DGL/**:  
+  Train and test GNN models using the DGL framework.  
+- **gnn/PyG/**:  
+  Train and test GNN models using the PyTorch Geometric (PyG) framework.
+
+Saved models are stored in respective `models/` subfolders.
+
+---
+
+## Notes
+
+- Adjust hyperparameters and file paths in the training and testing scripts as needed in config file.
+- Pretrained model checkpoints can be loaded automatically during testing if available.
+- Visit individual directories (`components/` and `main_code/`) for detailed documentation for each model and utility.
+
+---
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
+
+---
