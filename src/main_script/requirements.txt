@@ -1,11 +1,15 @@
-# Core ML frameworks
-torch==2.4.1+cu121
-torchvision==0.19.1+cu121
-torchaudio==2.4.1+cu121
+# point pip at the PyG wheels for torch 2.4.1+cu121
+--find-links https://data.pyg.org/whl/torch-2.4.1+cu121.html
 
-# PyG and its backend
-torch-geometric==2.6.1
+# Core ML frameworks
+torch==2.4.1
+torchvision==0.19.1
+torchaudio==2.4.1
+
+# PyG dependencies (must match your torch+CUDA combo)
+
 pyg-lib==0.4.0+pt24cu121
+torch-geometric==2.6.1
 
 # Data & metrics
 numpy==2.2.4
@@ -14,10 +18,10 @@ scikit-learn==1.6.1
 xgboost==3.0.0
 
 # Utilities
-PyYAML==6.0            # for read_yaml
-tqdm==4.67.1           # progress bars
-networkx               # if you still need any graph utilities
-matplotlib==3.10.1     # only if you’re plotting
+PyYAML==6.0
+tqdm==4.67.1
+networkx
+matplotlib==3.10.1
 requests>=2.28.0
 awscli
 boto3
