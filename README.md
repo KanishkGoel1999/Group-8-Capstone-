@@ -112,7 +112,7 @@ python gnn_train.py "ASK_REDDIT" 1
  - For Stack Overflow data with config set `1`
 
 - Once test_metrics are generated for GNN, and saved
-7. Run to visualize the performance of the models:
+11. Run to visualize the performance of the models:
 ```bash 
 python performance_visualization.py
 ```
