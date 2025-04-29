@@ -61,7 +61,7 @@ cd main_script
 ```
 2. Install the required packages using the command:
 ```bash
-pip install requirements.txt
+pip install -r requirements.txt
 ```
 ```bash
  pip install pyg-lib -f https://data.pyg.org/whl/torch-2.4.1+cpu.html      
