@@ -87,7 +87,7 @@ python gnn_test.py "ASK_REDDIT" 1
 ```
  - For Stack Overflow data with config set `1`(same config set).
 
-- Below commands are for training gnn (both datasets)
+- Below commands are for training gnn and graph consturction(skip point 8,9 and 10 if you don't want to train gnn again)
 8. Once the data is downloaded, run 
 ```bash
 python graph_construction.py
@@ -112,16 +112,15 @@ python performance_visualization.py
 
 ## Results Summary
 
-| Dataset        | Model     | F1-Score | Accuracy | AUC   |
-|----------------|-----------|----------|----------|--------|
-| Stack Overflow | XGBoost   | 0.602    | 0.812    | 0.646 |
-| Stack Overflow | GNN       | 0.619    | 0.816    | 0.667 |
-| Reddit         | XGBoost   | 0.680    | 0.813    | 0.895 |
-| Reddit         | GNN       | 0.677    | 0.912    | 0.954 |
+| Dataset        | Model     | F1-Score | Accuracy | AUC   |  Precsion | Recall  |
+|----------------|-----------|----------|----------|-------|-----------|---------|
+| Stack Overflow | XGBoost   | 0.603    | 0.813    | 0.655 |  0.589    | 0.646   |
+| Stack Overflow | GNN       | 0.612    | 0.813    | 0.672 |  0.596    | 0.661   |
+| Reddit         | XGBoost   | 0.658    | 0.701    | 0.706 |  0.657    | 0.659   |
+| Reddit         | GNN       | 0.616    | 0.655    | 0.792 |  0.664    | 0.792   |
 
 ## Technologies Used
 
-- Ronin Virtual Machine
 - Python, PyTorch Geometric
 - XGBoost
 - NetworkX / DGL for preprocessing
