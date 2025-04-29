@@ -8,7 +8,7 @@ class Metrics:
     """
     
     @staticmethod
-    def compute_metrics(y_true, y_pred):
+    def compute_metrics(y_true, y_pred, y_prob):
         """
         Computes evaluation metrics including recall, precision, f1-score, and accuracy.
         
@@ -24,7 +24,7 @@ class Metrics:
             "precision": precision_score(y_true, y_pred, average='macro', zero_division=0),
             "f1_score": f1_score(y_true, y_pred, average='macro', zero_division=0),
             "accuracy": accuracy_score(y_true, y_pred),
-            "auc": roc_auc_score(y_true, y_pred, average='macro')
+            "auc": roc_auc_score(y_true, y_prob)
         }
     
     @staticmethod

@@ -55,13 +55,16 @@ class GNNTester:
         )
 
     def test(self):
-        metrics = test_mini_batch(self.model, self.test_loader, self.dataset_name)
+        avg_loss, all_preds, all_probs, all_labels, metrics = test_mini_batch(self.model, self.test_loader, self.dataset_name)
         with open(os.path.join(self.artifact_dir, f"test_metrics_{self.dataset_name}.pkl"), "wb") as f:
             pickle.dump({
                 "test_losses": [metrics["loss"]],
-                "test_accuracies": [metrics["accuracy"]],
-                "test_auc": [metrics["auc"]],
-                "test_precision": [metrics["precision"]],
+                # "test_accuracies": [metrics["accuracy"]],
+                # "test_auc": [metrics["auc"]],
+                # "test_precision": [metrics["precision"]],
+                "probs": all_probs,
+                "preds": all_preds,
+                "labels": all_labels
             }, f)
 
         print("\nTest Performance Metrics")

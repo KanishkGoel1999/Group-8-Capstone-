@@ -140,8 +140,10 @@ class XGBTrainer:
         self.best_model.fit(self.X_train, self.y_train)
 
     def _evaluate(self) -> None:
-        y_pred = self.best_model.predict(self.X_test)
-        metrics: Dict[str, Any] = Metrics.compute_metrics(self.y_test, y_pred)
+        y_probs = self.best_model.predict_proba(self.X_test)[:, 1]
+        # y_pred = self.best_model.predict(self.X_test)
+        y_pred = (y_probs >= 0.5).astype(int)
+        metrics: Dict[str, Any] = Metrics.compute_metrics(self.y_test, y_pred, y_probs)
 
         # Calculate loss
         loss = 1.0 - metrics["accuracy"]
