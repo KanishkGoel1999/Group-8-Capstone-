@@ -37,7 +37,7 @@ The directory is structured as follows:
 
 For detailed usage information and instructions for each script, please refer to the individual files in the respective directories.
 
-The `main_code` directory contains subdirectories for different model types, including classical machine learning, deep learning, and graph neural networks (GNN). Each subdirectory contains scripts for training and inference.
+The `main_code` directory contains subdirectories for different model types, including classical machine learning, and graph neural networks (GNN). Each subdirectory contains scripts for training and inference.
 
 The `component` directory provides utility functions and helper classes that can be used across different models for tasks such as data preprocessing, loading, and other common operations.
 
