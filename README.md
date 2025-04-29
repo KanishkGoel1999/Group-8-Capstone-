@@ -33,10 +33,13 @@ Each dataset is transformed into:
 
 ## To run this file:
 1. Please make sure to have python version `3.10.12`
-2. `pip install requirements.txt`
-3. Download datasets from GCP/AWS in data folder. #TODO
-
 - For running the below commands, please ensure you are inside main_script folder.
+`cd main_script`
+2. `pip install requirements.txt`
+3. Download datasets from GCP/AWS in data folder and models and split to `model_artifact` folder using the command:
+`python s3_downloader.py`
+
+
 4. Run `python xgboost_model.py "ASK_REDDIT" 1`
 5. Run `python xgboost_model.py "STACK_OVERFLOW" 1`
 
