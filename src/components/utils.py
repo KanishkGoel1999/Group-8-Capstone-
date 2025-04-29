@@ -103,6 +103,8 @@ def train_mini_batch(model, train_loader, optimizer, dataset_name):
     total_samples = 0
     all_preds = []
     all_labels = []
+    all_probs = []
+
 
     # Determine node type dynamically
     target_node = "user" if dataset_name == DATASET_TYPE_1 else "author"
@@ -130,8 +132,10 @@ def train_mini_batch(model, train_loader, optimizer, dataset_name):
 
         # Accuracy
         preds = y_pred.argmax(dim=-1)
-        all_preds.append(preds.cpu())
-        all_labels.append(y_true.cpu())
+        probs = torch.softmax(y_pred, dim=-1)[:, 1]  # Probability of positive class
+        all_probs.append(probs.detach().cpu())
+        all_preds.append(preds.detach().cpu())
+        all_labels.append(y_true.detach().cpu())
 
         correct += (preds == y_true).sum().item()
         total_samples += y_true.size(0)
@@ -140,8 +144,9 @@ def train_mini_batch(model, train_loader, optimizer, dataset_name):
     accuracy = correct / total_samples
 
     all_preds = torch.cat(all_preds, dim=0).numpy()
+    all_probs = torch.cat(all_probs, dim=0).numpy()
     all_labels = torch.cat(all_labels, dim=0).numpy()
-    metrics = Metrics.compute_metrics(all_labels, all_preds)
+    metrics = Metrics.compute_metrics(all_labels, all_preds, all_probs)
 
     return avg_loss, accuracy, metrics['auc'], metrics['precision']
 
@@ -151,6 +156,7 @@ def test_mini_batch(model, test_loader, dataset_name):
     total_loss = 0
     all_preds = []
     all_labels = []
+    all_probs = []
 
     # Dynamically determine the node type
     target_node = "user" if dataset_name == DATASET_TYPE_1 else "author"
@@ -172,17 +178,22 @@ def test_mini_batch(model, test_loader, dataset_name):
         total_loss += loss.item()
 
         preds = node_out.argmax(dim=-1)
-        all_preds.append(preds.cpu())
-        all_labels.append(node_labels.cpu())
+        probs = torch.softmax(node_out, dim=-1)[:, 1]
+
+        all_preds.append(preds.detach().cpu())
+        all_probs.append(probs.detach().cpu())
+        all_labels.append(node_labels.detach().cpu())
 
     avg_loss = total_loss / len(test_loader)
+
     all_preds = torch.cat(all_preds, dim=0).numpy()
+    all_probs = torch.cat(all_probs, dim=0).numpy()
     all_labels = torch.cat(all_labels, dim=0).numpy()
 
-    metrics = Metrics.compute_metrics(all_labels, all_preds)
+    metrics = Metrics.compute_metrics(all_labels, all_preds, all_probs)
     metrics["loss"] = avg_loss
 
-    return metrics
+    return avg_loss, all_preds, all_probs, all_labels, metrics
 
 
 
