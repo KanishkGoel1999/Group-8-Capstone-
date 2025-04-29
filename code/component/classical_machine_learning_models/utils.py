@@ -82,6 +82,7 @@ def test_model(X_test, y_test, dir_name="models"):
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
+    plt.savefig("output/AUCPR Curve ML DS2.pdf", format='pdf', dpi=600, bbox_inches='tight')
     plt.show()
 
 
