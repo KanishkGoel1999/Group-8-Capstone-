@@ -94,7 +94,7 @@ python gnn_test.py "ASK_REDDIT" 1
 ```
  - For Stack Overflow data with config set `1`(same config set).
 
-- Below commands are for training gnn and graph consturction(skip point 8,9 and 10 if you don't want to train gnn again)
+- Below commands are for training gnn and graph consturction(skip point 8,9 and 10 if you don't want to train gnn again). However if you wish to train, you need to delete the files in 'model_artifacts directory'
 8. Once the data is downloaded, run 
 ```bash
 python graph_construction.py
