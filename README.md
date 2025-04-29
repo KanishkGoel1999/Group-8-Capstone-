@@ -63,6 +63,10 @@ cd main_script
 ```bash
 pip install requirements.txt
 ```
+```bash
+ pip install pyg-lib -f https://data.pyg.org/whl/torch-2.4.1+cpu.html      
+```
+
 3. Download datasets from GCP/AWS in `data` folder and models and split to `model_artifacts` folder using the command:
 ```bash
 python s3_downloader.py
