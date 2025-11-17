@@ -5,7 +5,7 @@ torchaudio==2.4.1
 torch-geometric==2.6.1
 
 # Data & metrics
-numpy==2.2.4
+numpy==1.26.4
 pandas==2.2.3
 scikit-learn==1.6.1
 xgboost==3.0.0
