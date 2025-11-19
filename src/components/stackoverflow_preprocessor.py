@@ -62,21 +62,23 @@ class DataProcessor:
         """Merge the cleaned datasets by aggregating questions and answers."""
         self.df_answers['is_accepted'] = self.df_answers['is_accepted'].astype(bool)
 
+        # Only keep total_questions from questions
         questions_agg = self.df_questions.groupby('user_id').agg(
             total_questions=('question_id', 'count'),
-            avg_question_score=('score', 'mean'),
         ).reset_index()
 
+        # Only keep accepted_answers from answers
         answers_agg = self.df_answers.groupby('user_id').agg(
-            avg_answer_score=('score', 'mean'),
             accepted_answers=('is_accepted', 'sum')
         ).reset_index()
 
         merged_df = self.df_users.merge(questions_agg, on='user_id', how='left')
         merged_df = merged_df.merge(answers_agg, on='user_id', how='left')
 
-        cols_to_fill = ['total_questions', 'avg_question_score', 'avg_answer_score', 'accepted_answers']
+        # Only fill the columns we actually keep
+        cols_to_fill = ['total_questions', 'accepted_answers']
         merged_df[cols_to_fill] = merged_df[cols_to_fill].fillna(0)
 
         merged_df.to_csv(os.path.join(self.data_dir, "preprocessed_stackoverflow_data.csv"), index=False)
         print("Merged dataset saved to data/preprocessed_stackoverflow_data.csv")
+
